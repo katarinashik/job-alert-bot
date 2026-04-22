@@ -1,5 +1,5 @@
 import requests
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 from datetime import date
 
@@ -9,27 +9,33 @@ class Job:
     id: str
     title: str
     company: str
-    location: str
+    location: str        # city / region
     url: str
     salary: Optional[str] = None
     source: str = ""
     remote: bool = False
     date_posted: Optional[date] = None
+    experience_level: Optional[str] = None  # e.g. "Entry level", "Mid-Senior"
 
 
 def send(token: str, chat_id: str, job: Job) -> None:
-    remote_tag = "🌍 Remote" if job.remote else f"📍 {job.location}"
-    salary_line = f"\n💰 {job.salary}" if job.salary else ""
-    source_tag = f" · {job.source}" if job.source else ""
-    date_line = f"\n📅 {job.date_posted.strftime('%d %b %Y')}" if job.date_posted else ""
+    lines = [f"🆕 *{_esc(job.title)}*", f"🏢 {_esc(job.company)}"]
 
-    text = (
-        f"🆕 *{_esc(job.title)}*\n"
-        f"🏢 {_esc(job.company)}\n"
-        f"{remote_tag}{salary_line}{date_line}\n"
-        f"🔗 [Voir l'offre →]({job.url})"
-        f"\n_{source_tag}_"
-    )
+    # always show city, then remote badge if applicable
+    if job.location:
+        lines.append(f"📍 {_esc(job.location)}")
+    if job.remote:
+        lines.append("🌍 Remote / Télétravail")
+
+    if job.salary:
+        lines.append(f"💰 {_esc(job.salary)}")
+    if job.date_posted:
+        lines.append(f"📅 {job.date_posted.strftime('%d %b %Y')}")
+
+    source_tag = f"_{job.source}_" if job.source else ""
+    lines.append(f"🔗 [Voir l'offre →]({job.url})  {source_tag}")
+
+    text = "\n".join(lines)
 
     requests.post(
         f"https://api.telegram.org/bot{token}/sendMessage",

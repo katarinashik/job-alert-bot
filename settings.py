@@ -33,10 +33,11 @@ BLOCKED_COMPANIES = [
 # job titles containing these words are always skipped
 BLOCKED_TITLE_WORDS = [
     "stage", "stagiaire", "alternance", "alternant", "alternante",
-    "apprenticeship", "apprentice", "internship", "intern",
-    "pfm", "pfe",  # projet de fin d'études/master
+    "apprenticeship", "apprentice", "apprenti", "apprentie",
+    "internship", "intern", "pfm", "pfe",
     "senior", "lead ", "expert ", "manager ", "head of",
     "directeur", "director", "chef de", "responsable de",
+    "confirmé", "confirme", "expérimenté", "experimente",
     "study participants", "data annotator", "ai trainer",
     "auditeur", "payroll", "restauration",
 ]

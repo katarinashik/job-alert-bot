@@ -43,17 +43,27 @@ def fetch(
                 )
                 if df is None or df.empty:
                     continue
+
                 for _, row in df.iterrows():
                     job_id = f"spy_{row.get('id', '')}_{row.get('site', '')}"
                     if not row.get("id") or job_id in seen_ids:
                         continue
                     seen_ids.add(job_id)
 
+                    job_type = str(row.get("job_type", "")).lower()
+                    job_level = str(row.get("job_level") or "")
+                    is_remote = (
+                        is_remote_search
+                        or "remote" in job_type
+                        or "télétravail" in job_type
+                    )
+
                     location_str = _location_str(row)
-                    remote = is_remote_search or str(row.get("job_type", "")).lower() == "remote"
 
                     dp = row.get("date_posted")
-                    date_posted = dp.date() if hasattr(dp, "date") else (dp if isinstance(dp, date) else None)
+                    date_posted = dp.date() if hasattr(dp, "date") else (
+                        dp if isinstance(dp, date) else None
+                    )
 
                     yield Job(
                         id=job_id,
@@ -63,16 +73,18 @@ def fetch(
                         url=str(row.get("job_url", "")),
                         salary=_salary_str(row),
                         source=str(row.get("site", "")).capitalize(),
-                        remote=remote,
+                        remote=is_remote,
                         date_posted=date_posted,
+                        experience_level=job_level if job_level and job_level != "nan" else None,
                     )
             except Exception as e:
                 print(f"[jobspy] {keyword} @ {location}: {e}")
 
 
 def _location_str(row) -> str:
-    parts = [row.get("city"), row.get("country")]
-    return ", ".join(str(p) for p in parts if p and str(p) != "nan")
+    parts = [row.get("city"), row.get("state"), row.get("country")]
+    result = ", ".join(str(p) for p in parts if p and str(p) not in ("nan", "None"))
+    return result or "France"
 
 
 def _salary_str(row) -> str | None:
