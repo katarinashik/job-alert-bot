@@ -38,7 +38,7 @@ def fetch(
                     results_wanted=25,
                     hours_old=max_age_hours,
                     country_indeed="France",
-                    linkedin_fetch_description=False,
+                    linkedin_fetch_description=True,
                     verbose=0,
                 )
                 if df is None or df.empty:
