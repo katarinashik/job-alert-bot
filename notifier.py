@@ -9,31 +9,49 @@ class Job:
     id: str
     title: str
     company: str
-    location: str        # city / region
+    location: str
     url: str
     salary: Optional[str] = None
     source: str = ""
     remote: bool = False
     date_posted: Optional[date] = None
-    experience_level: Optional[str] = None  # e.g. "Entry level", "Mid-Senior"
+    experience_level: Optional[str] = None
+
+
+# map LinkedIn job_level values to short French labels
+LEVEL_LABELS = {
+    "entry level": "Débutant / Junior",
+    "associate": "Junior / 1-3 ans",
+    "mid-senior level": None,   # filtered out before reaching here
+    "director": None,
+    "executive": None,
+}
 
 
 def send(token: str, chat_id: str, job: Job) -> None:
-    lines = [f"🆕 *{_esc(job.title)}*", f"🏢 {_esc(job.company)}"]
+    lines = [f"*{_esc(job.title)}*", f"🏢 {_esc(job.company)}"]
 
-    # always show city, then remote badge if applicable
     if job.location:
         lines.append(f"📍 {_esc(job.location)}")
     if job.remote:
         lines.append("🌍 Remote / Télétravail")
 
+    level_label = LEVEL_LABELS.get((job.experience_level or "").lower())
+    if level_label:
+        lines.append(f"👤 {level_label}")
+    elif job.experience_level and job.experience_level.lower() not in LEVEL_LABELS:
+        lines.append(f"👤 {_esc(job.experience_level)}")
+
     if job.salary:
         lines.append(f"💰 {_esc(job.salary)}")
+
     if job.date_posted:
         lines.append(f"📅 {job.date_posted.strftime('%d %b %Y')}")
 
-    source_tag = f"_{job.source}_" if job.source else ""
-    lines.append(f"🔗 [Voir l'offre →]({job.url})  {source_tag}")
+    if job.source:
+        lines.append(f"📌 {job.source}")
+
+    lines.append(f"🔗 [Voir l'offre]({job.url})")
 
     text = "\n".join(lines)
 

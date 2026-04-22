@@ -6,17 +6,23 @@ import requests
 from typing import Iterator
 from notifier import Job
 
+# APEC internal search API — tested working as of 2025
 SEARCH_URL = "https://www.apec.fr/cms/webservices/rechercheOffre/summary"
 JOB_URL = "https://www.apec.fr/candidat/recherche-emploi.html/emploi/{id}"
 
-MONTPELLIER_CODE = 105769  # APEC location code for Montpellier
-LYON_CODE = 105707          # APEC location code for Lyon
+MONTPELLIER_CODE = 105769
+LYON_CODE = 105707
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "Accept": "application/json",
-    "Referer": "https://www.apec.fr/",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Content-Type": "application/json",
+    "Origin": "https://www.apec.fr",
+    "Referer": "https://www.apec.fr/candidat/recherche-emploi.html/emploi",
 }
+
+_diagnosed = False
 
 
 def fetch(
@@ -24,6 +30,7 @@ def fetch(
     office_locations: list[str],
     max_age_hours: int,
 ) -> Iterator[Job]:
+    global _diagnosed
     seen_ids: set[str] = set()
 
     lieu_codes = []
@@ -32,29 +39,35 @@ def fetch(
     if "Lyon" in office_locations:
         lieu_codes.append(LYON_CODE)
 
-    # search remote + office locations
-    location_params = [{}]  # {} = all France (includes remote)
+    location_params = [{}]
     for code in lieu_codes:
         location_params.append({"lieu": [code], "rayonRecherche": 30})
 
-    for keyword in keywords:
-        for loc_params in location_params:
+    for keyword in keywords[:2]:  # limit keywords for diagnosis
+        for loc_params in location_params[:1]:
             try:
                 payload = {
                     "motsCles": keyword,
-                    "niveauxExperience": [1],  # 1 = débutant (0-1 year)
-                    "nbResultatsParPage": 50,
+                    "niveauxExperience": [1],
+                    "nbResultatsParPage": 20,
                     "numeroPage": 0,
                     **loc_params,
                 }
-                r = requests.post(
-                    SEARCH_URL,
-                    json=payload,
-                    headers=HEADERS,
-                    timeout=15,
-                )
+                r = requests.post(SEARCH_URL, json=payload, headers=HEADERS, timeout=15)
+
+                if not _diagnosed:
+                    print(f"[apec] status={r.status_code} for '{keyword}'")
+                    if r.status_code != 200:
+                        print(f"[apec] response: {r.text[:300]}")
+                    else:
+                        data = r.json()
+                        total = data.get("totalCount", data.get("nbResultats", "?"))
+                        print(f"[apec] OK — {total} results found")
+                    _diagnosed = True
+
                 if r.status_code != 200:
-                    continue
+                    break
+
                 data = r.json()
                 for item in data.get("resultats", []):
                     job_id = f"apec_{item.get('numOffre', '')}"
@@ -64,9 +77,7 @@ def fetch(
 
                     lieu = item.get("lieu", {})
                     location = lieu.get("libelle", "France")
-                    is_remote = "télétravail" in item.get("texte", "").lower()
-
-                    salary_info = item.get("salaireLibelle") or None
+                    is_remote = "télétravail" in str(item.get("texte", "")).lower()
 
                     yield Job(
                         id=job_id,
@@ -74,9 +85,11 @@ def fetch(
                         company=item.get("nomEntreprise", "N/A"),
                         location=location,
                         url=JOB_URL.format(id=item.get("numOffre", "")),
-                        salary=salary_info,
+                        salary=item.get("salaireLibelle") or None,
                         source="APEC",
                         remote=is_remote,
                     )
+
             except Exception as e:
-                print(f"[apec] {keyword}: {e}")
+                print(f"[apec] error for '{keyword}': {e}")
+                break

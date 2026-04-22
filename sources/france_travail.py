@@ -13,18 +13,24 @@ DISTANCE_KM = 30
 
 
 def _get_token(client_id: str, client_secret: str) -> str:
-    r = requests.post(
-        TOKEN_URL,
-        data={
-            "grant_type": "client_credentials",
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "scope": "api_offresdemploiv2 o2dsoffre",
-        },
-        timeout=10,
-    )
+    # try both scopes — some applications need only api_offresdemploiv2
+    for scope in ("api_offresdemploiv2 o2dsoffre", "api_offresdemploiv2"):
+        r = requests.post(
+            TOKEN_URL,
+            data={
+                "grant_type": "client_credentials",
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "scope": scope,
+            },
+            timeout=10,
+        )
+        if r.status_code == 200:
+            print(f"[france_travail] auth OK with scope: {scope}")
+            return r.json()["access_token"]
+        print(f"[france_travail] scope '{scope}' failed: {r.status_code} — {r.text[:200]}")
     r.raise_for_status()
-    return r.json()["access_token"]
+    return ""
 
 
 def fetch(
