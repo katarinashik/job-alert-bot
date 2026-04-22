@@ -1,5 +1,5 @@
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import Iterator
 from notifier import Job
 
@@ -13,7 +13,6 @@ DISTANCE_KM = 30
 
 
 def _get_token(client_id: str, client_secret: str) -> str:
-    # try both scopes — some applications need only api_offresdemploiv2
     for scope in ("api_offresdemploiv2 o2dsoffre", "api_offresdemploiv2"):
         r = requests.post(
             TOKEN_URL,
@@ -28,7 +27,7 @@ def _get_token(client_id: str, client_secret: str) -> str:
         if r.status_code == 200:
             print(f"[france_travail] auth OK with scope: {scope}")
             return r.json()["access_token"]
-        print(f"[france_travail] scope '{scope}' failed: {r.status_code} — {r.text[:200]}")
+        print(f"[france_travail] scope '{scope}' failed: {r.status_code}")
     r.raise_for_status()
     return ""
 
@@ -48,6 +47,7 @@ def fetch(
     except Exception as e:
         print(f"[france_travail] auth failed: {e}")
         return
+
     headers = {"Authorization": f"Bearer {token}"}
     min_date = (datetime.utcnow() - timedelta(hours=max_age_hours)).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
@@ -62,18 +62,16 @@ def fetch(
     seen_ids: set[str] = set()
 
     for keyword in keywords:
-        # remote (télétravail) anywhere in France
+        # remote anywhere in France — minimal params, no invalid fields
         params_remote = {
             "motsCles": keyword,
-            "experienceExigence": "D",  # débutant
-            "modeSelectionNaf": "INCLUS",
-            "tempsPlein": True,
+            "experienceExigence": "D",
             "minCreationDate": min_date,
             "range": "0-49",
         }
         yield from _query(headers, params_remote, seen_ids, remote=True)
 
-        # office jobs near Montpellier / Lyon
+        # office near Montpellier / Lyon
         for code in commune_codes:
             params_office = {
                 "motsCles": keyword,
@@ -94,7 +92,12 @@ def _query(
         if r.status_code == 204:
             return
         r.raise_for_status()
-        for item in r.json().get("resultats", []):
+
+        results = r.json().get("resultats", [])
+        if results:
+            print(f"[france_travail] got {len(results)} results for '{params.get('motsCles')}'")
+
+        for item in results:
             job_id = f"ft_{item['id']}"
             if job_id in seen_ids:
                 continue
@@ -102,11 +105,16 @@ def _query(
 
             salaire = item.get("salaire", {})
             salary_str = salaire.get("libelle") or None
-
             lieu = item.get("lieuTravail", {})
             location = lieu.get("libelle", "France")
-
             is_remote = remote or "télétravail" in item.get("description", "").lower()
+
+            # parse date
+            date_str = item.get("dateCreation", "")
+            try:
+                date_posted = date.fromisoformat(date_str[:10]) if date_str else None
+            except ValueError:
+                date_posted = None
 
             yield Job(
                 id=job_id,
@@ -117,6 +125,7 @@ def _query(
                 salary=salary_str,
                 source="France Travail",
                 remote=is_remote,
+                date_posted=date_posted,
             )
     except Exception as e:
         print(f"[france_travail] error: {e}")
