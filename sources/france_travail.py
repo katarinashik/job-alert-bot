@@ -8,7 +8,7 @@ SEARCH_URL = "https://api.francetravail.io/partenaire/offresdemploi/v2/offres/se
 JOB_URL = "https://candidat.francetravail.fr/offres/recherche/detail/{id}"
 
 MONTPELLIER_CODE = "34172"
-LYON_CODE = "69123"
+LYON_CODE = "69381"
 DISTANCE_KM = 30
 
 
