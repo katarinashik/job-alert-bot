@@ -37,7 +37,11 @@ def fetch(
     if not client_id or not client_secret:
         return
 
-    token = _get_token(client_id, client_secret)
+    try:
+        token = _get_token(client_id, client_secret)
+    except Exception as e:
+        print(f"[france_travail] auth failed: {e}")
+        return
     headers = {"Authorization": f"Bearer {token}"}
     min_date = (datetime.utcnow() - timedelta(hours=max_age_hours)).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
