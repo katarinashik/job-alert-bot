@@ -49,9 +49,9 @@ def fetch(
         return
 
     headers = {"Authorization": f"Bearer {token}"}
-    min_date = (datetime.utcnow() - timedelta(hours=max_age_hours)).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    now = datetime.utcnow()
+    min_date = (now - timedelta(hours=max_age_hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    max_date = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     commune_codes = []
     if "Montpellier" in office_locations:
@@ -62,11 +62,11 @@ def fetch(
     seen_ids: set[str] = set()
 
     for keyword in keywords:
-        # remote anywhere in France — minimal params, no invalid fields
+        # remote anywhere in France
         params_remote = {
             "motsCles": keyword,
-            "experienceExigence": "D",
             "minCreationDate": min_date,
+            "maxCreationDate": max_date,
             "range": "0-49",
         }
         yield from _query(headers, params_remote, seen_ids, remote=True)
@@ -75,10 +75,10 @@ def fetch(
         for code in commune_codes:
             params_office = {
                 "motsCles": keyword,
-                "experienceExigence": "D",
                 "commune": code,
                 "distance": DISTANCE_KM,
                 "minCreationDate": min_date,
+                "maxCreationDate": max_date,
                 "range": "0-49",
             }
             yield from _query(headers, params_office, seen_ids, remote=False)

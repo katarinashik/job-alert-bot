@@ -61,9 +61,15 @@ def fetch(
                     location_str = _location_str(row)
 
                     dp = row.get("date_posted")
-                    date_posted = dp.date() if hasattr(dp, "date") else (
-                        dp if isinstance(dp, date) else None
-                    )
+                    date_posted = None
+                    try:
+                        import pandas as pd
+                        if dp is not None and not pd.isna(dp):
+                            date_posted = dp.date() if hasattr(dp, "date") else (
+                                dp if isinstance(dp, date) else None
+                            )
+                    except Exception:
+                        pass
 
                     yield Job(
                         id=job_id,
