@@ -1,4 +1,5 @@
 from typing import Iterator
+from datetime import date
 from notifier import Job
 
 OFFICE_SEARCH_LOCATIONS = {
@@ -51,6 +52,9 @@ def fetch(
                     location_str = _location_str(row)
                     remote = is_remote_search or str(row.get("job_type", "")).lower() == "remote"
 
+                    dp = row.get("date_posted")
+                    date_posted = dp.date() if hasattr(dp, "date") else (dp if isinstance(dp, date) else None)
+
                     yield Job(
                         id=job_id,
                         title=str(row.get("title", "")),
@@ -60,6 +64,7 @@ def fetch(
                         salary=_salary_str(row),
                         source=str(row.get("site", "")).capitalize(),
                         remote=remote,
+                        date_posted=date_posted,
                     )
             except Exception as e:
                 print(f"[jobspy] {keyword} @ {location}: {e}")
