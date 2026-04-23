@@ -1,12 +1,79 @@
 import os
 import sys
 import time
+import requests
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import settings
 import storage
 import notifier
 from filter import is_relevant, is_valid_location, is_valid_experience, score
-from telegram_commands import process_commands
-from sources import france_travail, jobspy_scraper, welcome_jungle, apec
+from telegram_commands import process_commands, load_state, save_state
+
+PARIS = ZoneInfo("Europe/Paris")
+
+MONTHS_FR = ["jan", "fév", "mar", "avr", "mai", "juin",
+             "juil", "août", "sep", "oct", "nov", "déc"]
+
+
+def _update_daily_stats(state: dict, sent: int, irrelevant: int,
+                        overqualified: int, wrong_location: int) -> None:
+    today = datetime.now(PARIS).strftime("%Y-%m-%d")
+    if state.get("daily_stats", {}).get("date") != today:
+        state["daily_stats"] = {
+            "date": today,
+            "sent": 0,
+            "irrelevant": 0,
+            "overqualified": 0,
+            "wrong_location": 0,
+            "summary_sent": False,
+        }
+    ds = state["daily_stats"]
+    ds["sent"] += sent
+    ds["irrelevant"] += irrelevant
+    ds["overqualified"] += overqualified
+    ds["wrong_location"] += wrong_location
+
+
+def _maybe_send_daily_summary(state: dict, token: str, chat_id: str) -> None:
+    now = datetime.now(PARIS)
+    ds = state.get("daily_stats", {})
+    if now.hour < 20 or ds.get("summary_sent"):
+        return
+
+    date_str = ds.get("date", now.strftime("%Y-%m-%d"))
+    sent = ds.get("sent", 0)
+    irrelevant = ds.get("irrelevant", 0)
+    overqualified = ds.get("overqualified", 0)
+    wrong_location = ds.get("wrong_location", 0)
+    total = sent + irrelevant + overqualified + wrong_location
+
+    try:
+        d = datetime.strptime(date_str, "%Y-%m-%d")
+        date_label = f"{d.day} {MONTHS_FR[d.month - 1]} {d.year}"
+    except Exception:
+        date_label = date_str
+
+    text = (
+        f"📊 <b>Résumé du {date_label}</b>\n\n"
+        f"✅ Alertes envoyées: <b>{sent}</b>\n"
+        f"🔍 Vues au total: <b>{total}</b>\n\n"
+        f"Filtrées:\n"
+        f"  • Non pertinentes: {irrelevant}\n"
+        f"  • Trop expérimenté: {overqualified}\n"
+        f"  • Mauvaise localisation: {wrong_location}"
+    )
+
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
+            timeout=10,
+        ).raise_for_status()
+        ds["summary_sent"] = True
+        print("[summary] Daily report sent.")
+    except Exception as e:
+        print(f"[summary] Failed to send daily report: {e}")
 
 
 def run() -> None:
@@ -72,7 +139,6 @@ def run() -> None:
                 continue
             candidates.append((score(job.title), job))
 
-    # send highest-scored first
     candidates.sort(key=lambda x: x[0], reverse=True)
 
     sent = 0
@@ -91,6 +157,12 @@ def run() -> None:
         f"{skipped_experience} overqualified, "
         f"{skipped_location} wrong location."
     )
+
+    # Update daily stats and send evening summary if it's time
+    state = load_state()
+    _update_daily_stats(state, sent, skipped_relevance, skipped_experience, skipped_location)
+    _maybe_send_daily_summary(state, token, chat_id)
+    save_state(state)
 
 
 if __name__ == "__main__":

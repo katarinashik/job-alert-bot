@@ -22,7 +22,7 @@ class Job:
 LEVEL_LABELS = {
     "entry level": "Débutant / Junior",
     "associate": "Junior / 1-3 ans",
-    "mid-senior level": None,   # filtered out before reaching here
+    "mid-senior level": "Intermédiaire / 2-5 ans",
     "director": None,
     "executive": None,
 }
