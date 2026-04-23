@@ -3,7 +3,7 @@ import settings
 from notifier import Job
 
 # job_level values from LinkedIn that indicate too much experience
-SENIOR_LEVELS = {"mid-senior level", "director", "executive", "not applicable"}
+SENIOR_LEVELS = {"director", "executive"}
 
 # words in title that indicate too much experience
 SENIOR_TITLE_WORDS = [
