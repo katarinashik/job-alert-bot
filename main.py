@@ -9,6 +9,7 @@ import storage
 import notifier
 from filter import is_relevant, is_valid_location, is_valid_experience, score
 from telegram_commands import process_commands, load_state, save_state
+from sources import france_travail, jobspy_scraper, welcome_jungle, apec
 
 PARIS = ZoneInfo("Europe/Paris")
 
