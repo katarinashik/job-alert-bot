@@ -10,6 +10,8 @@ SEARCH_KEYWORDS = [
     "analyste données junior",
     "analyste bi junior",
     "analyste reporting junior",
+    "junior business analyst",
+    "analyste métier junior",
 ]
 
 OFFICE_LOCATIONS = ["Montpellier", "Lyon"]
@@ -46,12 +48,13 @@ BLOCKED_TITLE_WORDS = [
 # group A: role contains "analyst/analyste"
 # group B: topic contains data/bi/reporting/etc.
 REQUIRED_ROLE_WORDS = ["analyst", "analyste"]
-REQUIRED_DATA_WORDS = ["data", " bi ", "power bi", "reporting", "insight", "growth", "analytics", "marketing data"]
+REQUIRED_DATA_WORDS = ["data", " bi ", "power bi", "reporting", "insight", "growth", "analytics", "marketing data", "business"]
 
 # high-value terms that boost score (the more the better)
 SCORE_BOOST_TERMS = [
     "junior", "data analyst", "analyste données", "analyste de données",
     "power bi", "bi analyst", "analyste bi",
     "insight", "growth", "reporting", "marketing analyst",
+    "business analyst", "analyste métier",
     "sql", "python", "tableau", "looker",
 ]
