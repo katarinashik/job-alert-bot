@@ -48,7 +48,7 @@ def _scrape(
 ) -> Iterator[Job]:
     try:
         kwargs = dict(
-            site_name=["linkedin", "indeed"],
+            site_name=["linkedin", "indeed", "glassdoor", "google"],
             search_term=keyword,
             location=location,
             results_wanted=25,
@@ -58,7 +58,7 @@ def _scrape(
             verbose=0,
         )
         if is_remote_search:
-            kwargs["is_remote"] = True   # LinkedIn remote-only filter
+            kwargs["is_remote"] = True   # LinkedIn/Glassdoor remote-only filter
 
         df = scrape_jobs(**kwargs)
         if df is None or df.empty:
