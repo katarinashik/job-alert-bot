@@ -1,3 +1,4 @@
+import pandas as pd
 from typing import Iterator
 from datetime import date
 from notifier import Job
@@ -21,70 +22,92 @@ def fetch(
         return
 
     seen_ids: set[str] = set()
-    locations_to_search = [REMOTE_LOCATION] + [
-        OFFICE_SEARCH_LOCATIONS[loc]
-        for loc in office_locations
-        if loc in OFFICE_SEARCH_LOCATIONS
-    ]
 
     for keyword in keywords:
-        for location in locations_to_search:
-            is_remote_search = location == REMOTE_LOCATION
-            try:
-                df = scrape_jobs(
-                    site_name=["linkedin", "indeed"],
-                    search_term=keyword,
-                    location=location,
-                    results_wanted=25,
-                    hours_old=max_age_hours,
-                    country_indeed="France",
-                    linkedin_fetch_description=True,
-                    verbose=0,
+        # Remote search: pass is_remote=True so LinkedIn filters for remote jobs only
+        yield from _scrape(
+            scrape_jobs, keyword, REMOTE_LOCATION, max_age_hours,
+            seen_ids, is_remote_search=True,
+        )
+        # Office searches in target cities (no remote filter)
+        for loc in office_locations:
+            if loc in OFFICE_SEARCH_LOCATIONS:
+                yield from _scrape(
+                    scrape_jobs, keyword, OFFICE_SEARCH_LOCATIONS[loc], max_age_hours,
+                    seen_ids, is_remote_search=False,
                 )
-                if df is None or df.empty:
-                    continue
 
-                for _, row in df.iterrows():
-                    job_id = f"spy_{row.get('id', '')}_{row.get('site', '')}"
-                    if not row.get("id") or job_id in seen_ids:
-                        continue
-                    seen_ids.add(job_id)
 
-                    job_type = str(row.get("job_type", "")).lower()
-                    job_level = str(row.get("job_level") or "")
-                    is_remote = (
-                        is_remote_search
-                        or "remote" in job_type
-                        or "télétravail" in job_type
+def _scrape(
+    scrape_jobs,
+    keyword: str,
+    location: str,
+    max_age_hours: int,
+    seen_ids: set,
+    is_remote_search: bool,
+) -> Iterator[Job]:
+    try:
+        kwargs = dict(
+            site_name=["linkedin", "indeed"],
+            search_term=keyword,
+            location=location,
+            results_wanted=25,
+            hours_old=max_age_hours,
+            country_indeed="France",
+            linkedin_fetch_description=True,
+            verbose=0,
+        )
+        if is_remote_search:
+            kwargs["is_remote"] = True   # LinkedIn remote-only filter
+
+        df = scrape_jobs(**kwargs)
+        if df is None or df.empty:
+            return
+
+        for _, row in df.iterrows():
+            job_id = f"spy_{row.get('id', '')}_{row.get('site', '')}"
+            if not row.get("id") or job_id in seen_ids:
+                continue
+            seen_ids.add(job_id)
+
+            job_type = str(row.get("job_type", "")).lower()
+            job_level = str(row.get("job_level") or "")
+
+            # Detect remote from the actual job data — NOT from which search we ran.
+            # "hybrid" is not remote: user only wants fully remote or office in target cities.
+            raw_remote = row.get("is_remote")
+            is_remote = (
+                (raw_remote is True or str(raw_remote).lower() == "true")
+                or "remote" in job_type
+                or "télétravail" in job_type
+            )
+
+            location_str = _location_str(row)
+
+            dp = row.get("date_posted")
+            date_posted = None
+            try:
+                if dp is not None and not pd.isna(dp):
+                    date_posted = dp.date() if hasattr(dp, "date") else (
+                        dp if isinstance(dp, date) else None
                     )
+            except Exception:
+                pass
 
-                    location_str = _location_str(row)
-
-                    dp = row.get("date_posted")
-                    date_posted = None
-                    try:
-                        import pandas as pd
-                        if dp is not None and not pd.isna(dp):
-                            date_posted = dp.date() if hasattr(dp, "date") else (
-                                dp if isinstance(dp, date) else None
-                            )
-                    except Exception:
-                        pass
-
-                    yield Job(
-                        id=job_id,
-                        title=str(row.get("title", "")),
-                        company=str(row.get("company", "N/A")),
-                        location=location_str,
-                        url=str(row.get("job_url", "")),
-                        salary=_salary_str(row),
-                        source=str(row.get("site", "")).capitalize(),
-                        remote=is_remote,
-                        date_posted=date_posted,
-                        experience_level=job_level if job_level and job_level != "nan" else None,
-                    )
-            except Exception as e:
-                print(f"[jobspy] {keyword} @ {location}: {e}")
+            yield Job(
+                id=job_id,
+                title=str(row.get("title", "")),
+                company=str(row.get("company", "N/A")),
+                location=location_str,
+                url=str(row.get("job_url", "")),
+                salary=_salary_str(row),
+                source=str(row.get("site", "")).capitalize(),
+                remote=is_remote,
+                date_posted=date_posted,
+                experience_level=job_level if job_level and job_level != "nan" else None,
+            )
+    except Exception as e:
+        print(f"[jobspy] {keyword} @ {location}: {e}")
 
 
 def _location_str(row) -> str:
