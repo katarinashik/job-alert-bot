@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 import settings
 import storage
 import notifier
-from filter import is_relevant, is_valid_location, is_valid_experience, score
+from filter import is_relevant, is_valid_location, is_valid_experience, is_valid_description, score
 from telegram_commands import process_commands, load_state, save_state
 from sources import france_travail, jobspy_scraper, welcome_jungle, apec
 
@@ -18,7 +18,8 @@ MONTHS_FR = ["jan", "fév", "mar", "avr", "mai", "juin",
 
 
 def _update_daily_stats(state: dict, sent: int, irrelevant: int,
-                        overqualified: int, wrong_location: int) -> None:
+                        overqualified: int, wrong_location: int,
+                        spam: int = 0) -> None:
     today = datetime.now(PARIS).strftime("%Y-%m-%d")
     if state.get("daily_stats", {}).get("date") != today:
         state["daily_stats"] = {
@@ -27,6 +28,7 @@ def _update_daily_stats(state: dict, sent: int, irrelevant: int,
             "irrelevant": 0,
             "overqualified": 0,
             "wrong_location": 0,
+            "spam": 0,
             "summary_sent": False,
         }
     ds = state["daily_stats"]
@@ -34,6 +36,7 @@ def _update_daily_stats(state: dict, sent: int, irrelevant: int,
     ds["irrelevant"] += irrelevant
     ds["overqualified"] += overqualified
     ds["wrong_location"] += wrong_location
+    ds["spam"] = ds.get("spam", 0) + spam
 
 
 def _maybe_send_daily_summary(state: dict, token: str, chat_id: str) -> None:
@@ -47,7 +50,8 @@ def _maybe_send_daily_summary(state: dict, token: str, chat_id: str) -> None:
     irrelevant = ds.get("irrelevant", 0)
     overqualified = ds.get("overqualified", 0)
     wrong_location = ds.get("wrong_location", 0)
-    total = sent + irrelevant + overqualified + wrong_location
+    spam = ds.get("spam", 0)
+    total = sent + irrelevant + overqualified + wrong_location + spam
 
     try:
         d = datetime.strptime(date_str, "%Y-%m-%d")
@@ -55,6 +59,7 @@ def _maybe_send_daily_summary(state: dict, token: str, chat_id: str) -> None:
     except Exception:
         date_label = date_str
 
+    spam_line = f"  • Spam / doublon: {spam}\n" if spam else ""
     text = (
         f"📊 <b>Résumé du {date_label}</b>\n\n"
         f"✅ Alertes envoyées: <b>{sent}</b>\n"
@@ -62,7 +67,8 @@ def _maybe_send_daily_summary(state: dict, token: str, chat_id: str) -> None:
         f"Filtrées:\n"
         f"  • Non pertinentes: {irrelevant}\n"
         f"  • Trop expérimenté: {overqualified}\n"
-        f"  • Mauvaise localisation: {wrong_location}"
+        f"  • Mauvaise localisation: {wrong_location}\n"
+        f"{spam_line}"
     )
 
     try:
@@ -121,6 +127,8 @@ def run() -> None:
     skipped_relevance = 0
     skipped_location = 0
     skipped_experience = 0
+    skipped_spam = 0
+    seen_desc_hashes: set[str] = set()
 
     for source in sources:
         for job in source:
@@ -135,6 +143,10 @@ def run() -> None:
             if not is_valid_location(job):
                 skipped_location += 1
                 print(f"[filter:location] {job.title} — {job.location} (not remote, not MTP/LYN)")
+                continue
+            if not is_valid_description(job, seen_desc_hashes):
+                skipped_spam += 1
+                print(f"[filter:spam] {job.title} @ {job.company} (short/duplicate description)")
                 continue
             if not storage.is_new(job.id, job.title, job.company):
                 continue
@@ -156,12 +168,13 @@ def run() -> None:
         f"Done. Sent {sent} alert(s). "
         f"Filtered: {skipped_relevance} irrelevant, "
         f"{skipped_experience} overqualified, "
-        f"{skipped_location} wrong location."
+        f"{skipped_location} wrong location, "
+        f"{skipped_spam} spam/duplicate."
     )
 
     # Update daily stats and send evening summary if it's time
     state = load_state()
-    _update_daily_stats(state, sent, skipped_relevance, skipped_experience, skipped_location)
+    _update_daily_stats(state, sent, skipped_relevance, skipped_experience, skipped_location, skipped_spam)
     _maybe_send_daily_summary(state, token, chat_id)
     save_state(state)
 

@@ -16,6 +16,7 @@ class Job:
     remote: bool = False
     date_posted: Optional[date] = None
     experience_level: Optional[str] = None
+    description: Optional[str] = None
 
 
 # map LinkedIn job_level values to short French labels

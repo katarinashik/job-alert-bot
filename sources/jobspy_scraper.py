@@ -101,6 +101,9 @@ def _scrape(
             except Exception:
                 pass
 
+            raw_desc = row.get("description")
+            description = str(raw_desc).strip() if raw_desc and str(raw_desc) not in ("nan", "None", "") else None
+
             yield Job(
                 id=job_id,
                 title=str(row.get("title", "")),
@@ -112,6 +115,7 @@ def _scrape(
                 remote=is_remote,
                 date_posted=date_posted,
                 experience_level=job_level if job_level and job_level != "nan" else None,
+                description=description,
             )
     except Exception as e:
         print(f"[jobspy] {keyword} @ {location}: {e}")

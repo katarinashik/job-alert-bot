@@ -116,6 +116,9 @@ def _query(
             except ValueError:
                 date_posted = None
 
+            raw_desc = item.get("description", "")
+            description = raw_desc.strip() if raw_desc and raw_desc.strip() else None
+
             yield Job(
                 id=job_id,
                 title=item.get("intitule", ""),
@@ -126,6 +129,7 @@ def _query(
                 source="France Travail",
                 remote=is_remote,
                 date_posted=date_posted,
+                description=description,
             )
     except Exception as e:
         print(f"[france_travail] error: {e}")
