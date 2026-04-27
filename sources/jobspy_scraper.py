@@ -64,6 +64,13 @@ def _scrape(
         if df is None or df.empty:
             return
 
+        # Log per-site counts so we can see which sources return results
+        if not df.empty:
+            by_site = df.groupby("site").size().to_dict()
+            label = "remote" if is_remote_search else location
+            print(f"[jobspy] '{keyword}' ({label}): " +
+                  ", ".join(f"{s}={n}" for s, n in sorted(by_site.items())))
+
         for _, row in df.iterrows():
             job_id = f"spy_{row.get('id', '')}_{row.get('site', '')}"
             if not row.get("id") or job_id in seen_ids:
