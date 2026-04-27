@@ -162,8 +162,9 @@ def run() -> None:
     sent = 0
     for job_score, job in candidates:
         try:
-            notifier.send(token, chat_id, job)
+            notifier.send(token, chat_id, job, job_score)
             storage.mark_seen(job.id, job.title, job.company)
+            storage.store_sent_job(job.id, job.title, job.company, job.url)
             sent += 1
             time.sleep(0.5)
         except Exception as e:

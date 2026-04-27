@@ -15,6 +15,18 @@ def _conn():
         "CREATE TABLE IF NOT EXISTS seen_fingerprints "
         "(fp TEXT PRIMARY KEY, seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
     )
+    # Stores info about every job sent to Telegram (for button callbacks)
+    c.execute(
+        "CREATE TABLE IF NOT EXISTS sent_jobs "
+        "(job_id TEXT PRIMARY KEY, title TEXT, company TEXT, url TEXT, "
+        " sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+    )
+    # Stores user actions: 'applied' or 'saved'
+    c.execute(
+        "CREATE TABLE IF NOT EXISTS job_actions "
+        "(job_id TEXT PRIMARY KEY, action TEXT, "
+        " actioned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+    )
     c.commit()
     return c
 
@@ -37,6 +49,57 @@ def mark_seen(job_id: str, title: str, company: str) -> None:
         c.commit()
 
 
+def store_sent_job(job_id: str, title: str, company: str, url: str) -> None:
+    """Remember every job sent to Telegram so button callbacks can look it up."""
+    with _conn() as c:
+        c.execute(
+            "INSERT OR IGNORE INTO sent_jobs (job_id, title, company, url) VALUES (?, ?, ?, ?)",
+            (job_id, title, company, url),
+        )
+        c.commit()
+
+
+def mark_job_action(job_id: str, action: str) -> tuple | None:
+    """
+    Record a user action ('applied' or 'saved') on a job.
+    Returns (title, company, url) if the job was found, else None.
+    """
+    with _conn() as c:
+        row = c.execute(
+            "SELECT title, company, url FROM sent_jobs WHERE job_id = ?", (job_id,)
+        ).fetchone()
+        if row:
+            c.execute(
+                "INSERT OR REPLACE INTO job_actions (job_id, action) VALUES (?, ?)",
+                (job_id, action),
+            )
+            c.commit()
+        return row
+
+
+def remove_job_action(job_id: str) -> None:
+    """Remove a saved/applied action (e.g. user unsaves a job)."""
+    with _conn() as c:
+        c.execute("DELETE FROM job_actions WHERE job_id = ?", (job_id,))
+        c.commit()
+
+
+def get_job_actions(action: str) -> list:
+    """
+    Return list of (job_id, title, company, url, actioned_at)
+    for the given action ('applied' or 'saved'), newest first.
+    """
+    with _conn() as c:
+        return c.execute(
+            """SELECT ja.job_id, sj.title, sj.company, sj.url, ja.actioned_at
+               FROM job_actions ja
+               JOIN sent_jobs sj ON ja.job_id = sj.job_id
+               WHERE ja.action = ?
+               ORDER BY ja.actioned_at DESC""",
+            (action,),
+        ).fetchall()
+
+
 def cleanup_old(days: int = 30) -> None:
     with _conn() as c:
         c.execute(
@@ -46,6 +109,14 @@ def cleanup_old(days: int = 30) -> None:
         c.execute(
             "DELETE FROM seen_fingerprints WHERE seen_at < datetime('now', ?)",
             (f"-{days} days",),
+        )
+        c.execute(
+            "DELETE FROM sent_jobs WHERE sent_at < datetime('now', ?)",
+            (f"-{days} days",),
+        )
+        c.execute(
+            """DELETE FROM job_actions WHERE job_id NOT IN
+               (SELECT job_id FROM sent_jobs)""",
         )
         c.commit()
 
