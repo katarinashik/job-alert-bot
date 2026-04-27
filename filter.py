@@ -28,8 +28,10 @@ def is_relevant(title: str, company: str) -> bool:
         if re.search(rf"\b{re.escape(word.strip())}\b", t):
             return False
 
-    has_role = any(w in t for w in settings.REQUIRED_ROLE_WORDS)
-    has_data = any(w in t for w in settings.REQUIRED_DATA_WORDS)
+    # Pad with spaces so " bi " matches "bi analyst" at start of string too
+    padded = f" {t} "
+    has_role = any(w in padded for w in settings.REQUIRED_ROLE_WORDS)
+    has_data = any(w in padded for w in settings.REQUIRED_DATA_WORDS)
 
     return has_role and has_data
 

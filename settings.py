@@ -1,43 +1,42 @@
 SEARCH_KEYWORDS = [
-    # data / BI
-    "junior data analyst",
-    "junior analyste données",
-    "junior bi analyst",
-    "junior power bi analyst",
-    "junior insight analyst",
-    "junior growth analyst",
-    "junior marketing data analyst",
-    "junior reporting analyst",
-    "analyste données junior",
-    "analyste bi junior",
-    "analyste reporting junior",
+    # core data / BI
+    "data analyst",
+    "analyste données",
+    "analyste de données",
+    "bi analyst",
+    "analyste bi",
+    "business intelligence analyst",
+    "reporting analyst",
+    "analyste reporting",
+    "growth analyst",
+    "marketing analyst",
+    "analyste marketing",
     # business
-    "junior business analyst",
-    "analyste métier junior",
+    "business analyst",
+    "analyste métier",
     # web / digital / e-commerce
-    "junior web analyst",
-    "junior digital analyst",
-    "junior e-commerce analyst",
-    "analyste web junior",
-    "analyste digital junior",
-    "analyste e-commerce junior",
-    # CRM
-    "junior crm analyst",
-    "analyste crm junior",
-    # product
-    "junior product analyst",
-    "analyste produit junior",
+    "web analyst",
+    "digital analyst",
+    "analyste web",
+    "analyste digital",
+    "e-commerce analyst",
+    "analyste e-commerce",
+    # CRM / product
+    "crm analyst",
+    "analyste crm",
+    "product analyst",
+    "analyste produit",
     # operations / pricing
-    "junior operations analyst",
-    "junior pricing analyst",
-    "analyste pricing junior",
+    "operations analyst",
+    "pricing analyst",
+    "analyste pricing",
     # HR / people
-    "junior hr analyst",
-    "junior people analyst",
-    "analyste rh junior",
+    "hr analyst",
+    "people analyst",
+    "analyste rh",
     # market research
-    "junior market research analyst",
-    "chargé études junior",
+    "market research analyst",
+    "chargé études",
 ]
 
 OFFICE_LOCATIONS = ["Montpellier", "Lyon"]
