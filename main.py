@@ -249,7 +249,7 @@ def run() -> None:
                 continue
             if not is_valid_location(job):
                 skipped_location += 1
-                print(f"[filter:location] {job.title} — {job.location} (not remote, not MTP/LYN)")
+                print(f"[filter:location] {job.title} @ {job.company} — {job.location}")
                 continue
             if not is_valid_description(job, seen_desc_hashes):
                 skipped_spam += 1

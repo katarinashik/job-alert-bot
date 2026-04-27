@@ -66,6 +66,7 @@ BLOCKED_TITLE_WORDS = [
     "confirmé", "confirme", "expérimenté", "experimente",
     "study participants", "data annotator", "ai trainer",
     "auditeur", "payroll", "restauration",
+    "transformation digitale",
 ]
 
 # title must contain at least one of these groups to be considered relevant
