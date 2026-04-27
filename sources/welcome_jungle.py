@@ -193,6 +193,13 @@ def _query(
                 elif exp >= 5:
                     exp_label = f"{exp}+ ans d'expérience"
 
+            # Company size — WTTJ returns several possible field names
+            size_raw = (org.get("nb_employees_range") or org.get("size") or
+                        org.get("nb_employees") or "")
+            company_size = str(size_raw).strip() if size_raw else None
+            if company_size and not any(c.isdigit() for c in company_size):
+                company_size = None  # drop non-informative labels
+
             yield Job(
                 id=job_id,
                 title=hit.get("name", ""),
@@ -204,6 +211,7 @@ def _query(
                 remote=is_remote or hit.get("has_remote", False),
                 date_posted=date_posted,
                 experience_level=exp_label,
+                company_size=company_size,
             )
     except Exception as e:
         print(f"[wttj] error for '{keyword}': {e}")

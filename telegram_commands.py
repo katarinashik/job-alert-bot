@@ -74,14 +74,27 @@ def process_commands(token: str, chat_id: str) -> bool:
         elif cmd == "/saved":
             _send_action_list(token, chat_id, "saved",
                               "💾 Offres sauvegardées", "Aucune offre sauvegardée.")
+        elif cmd == "/digest":
+            mode = state.get("digest_mode", False)
+            if mode:
+                state["digest_mode"] = False
+                _reply(token, chat_id,
+                       "📨 Mode temps réel activé — alertes envoyées immédiatement.")
+            else:
+                state["digest_mode"] = True
+                _reply(token, chat_id,
+                       "📬 Mode digest activé — résumé envoyé à 9h et 18h (heure de Paris).")
         elif cmd == "/help":
+            digest_status = "activé" if state.get("digest_mode") else "désactivé"
             _reply(token, chat_id,
                    "Commandes disponibles:\n"
                    "/status — état du bot\n"
                    "/pause — suspendre les alertes\n"
                    "/resume — reprendre les alertes\n"
                    "/applied — voir vos candidatures\n"
-                   "/saved — voir les offres sauvegardées")
+                   "/saved — voir les offres sauvegardées\n"
+                   f"/digest — basculer mode digest (actuellement: {digest_status})\n"
+                   "/help — cette aide")
 
     save_state(state)
     return not state.get("paused", False)

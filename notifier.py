@@ -17,6 +17,7 @@ class Job:
     date_posted: Optional[date] = None
     experience_level: Optional[str] = None
     description: Optional[str] = None
+    company_size: Optional[str] = None
 
 
 # map LinkedIn job_level values to short French labels
@@ -113,7 +114,10 @@ def _stars(job_score: int) -> str:
 
 def send(token: str, chat_id: str, job: Job, job_score: int = 0) -> None:
     stars = _stars(job_score)
-    lines = [f"{stars}*{_esc(job.title)}*", f"🏢 {_esc(job.company)}"]
+    company_line = f"🏢 {_esc(job.company)}"
+    if job.company_size:
+        company_line += f"  👥 {_esc(job.company_size)}"
+    lines = [f"{stars}*{_esc(job.title)}*", company_line]
 
     if job.location:
         lines.append(f"📍 {_esc(job.location)}")

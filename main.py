@@ -2,7 +2,7 @@ import os
 import sys
 import time
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import settings
 import storage
@@ -16,6 +16,108 @@ PARIS = ZoneInfo("Europe/Paris")
 MONTHS_FR = ["jan", "fév", "mar", "avr", "mai", "juin",
              "juil", "août", "sep", "oct", "nov", "déc"]
 
+
+# ── Digest mode ─────────────────────────────────────────────────────────────
+
+def _should_send_digest(state: dict, period: str) -> bool:
+    """True if it's time to send the morning (9h) or evening (18h) digest."""
+    now = datetime.now(PARIS)
+    today = now.strftime("%Y-%m-%d")
+    threshold = 9 if period == "morning" else 18
+    return now.hour >= threshold and state.get(f"digest_{period}_sent") != today
+
+
+def _send_digest(token: str, chat_id: str, state: dict, period: str) -> None:
+    rows = storage.get_pending_jobs()
+    today = datetime.now(PARIS).strftime("%Y-%m-%d")
+    state[f"digest_{period}_sent"] = today
+
+    if not rows:
+        return  # nothing queued — silently mark as sent
+
+    label = "🌅 Digest du matin" if period == "morning" else "🌆 Digest du soir"
+    n = len(rows)
+    plural = "s" if n > 1 else ""
+    lines = [f"*{label}* — {n} nouvelle{plural} offre{plural}\n"]
+
+    for _, title, company, url, remote, job_score in rows:
+        stars = notifier._stars(job_score)
+        remote_icon = " 🌍" if remote else ""
+        # Escape for Markdown
+        t = title.replace("*", "").replace("[", "").replace("]", "")
+        c = company.replace("*", "").replace("[", "").replace("]", "")
+        lines.append(f"{stars}[{t} @ {c}]({url}){remote_icon}")
+
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={
+                "chat_id": chat_id,
+                "text": "\n".join(lines),
+                "parse_mode": "Markdown",
+                "disable_web_page_preview": True,
+            },
+            timeout=10,
+        ).raise_for_status()
+        storage.clear_pending_jobs()
+        print(f"[digest] {period} digest sent ({n} jobs).")
+    except Exception as e:
+        print(f"[digest] failed to send {period} digest: {e}")
+
+
+# ── Weekly report ────────────────────────────────────────────────────────────
+
+def _update_weekly_stats(state: dict, sent: int) -> None:
+    now = datetime.now(PARIS)
+    week_key = now.strftime("%G-W%V")  # ISO week
+    if state.get("weekly_stats", {}).get("week") != week_key:
+        state["weekly_stats"] = {"week": week_key, "jobs_sent": 0, "report_sent": False}
+    state["weekly_stats"]["jobs_sent"] = state["weekly_stats"].get("jobs_sent", 0) + sent
+
+
+def _maybe_send_weekly_report(state: dict, token: str, chat_id: str) -> None:
+    now = datetime.now(PARIS)
+    ws = state.get("weekly_stats", {})
+    # Sunday = weekday 6, send at first run on or after 18:00
+    if now.weekday() != 6 or now.hour < 18 or ws.get("report_sent"):
+        return
+
+    jobs_sent = ws.get("jobs_sent", 0)
+    week_key = ws.get("week", now.strftime("%G-W%V"))
+
+    applied_rows = storage.get_job_actions("applied")
+    saved_rows = storage.get_job_actions("saved")
+    cutoff = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+    applied_week = sum(1 for r in applied_rows if r[4] and r[4][:10] >= cutoff)
+    saved_week = sum(1 for r in saved_rows if r[4] and r[4][:10] >= cutoff)
+
+    top = storage.get_top_companies(days=7)
+    companies_text = ""
+    if top:
+        companies_text = "\n\n🏢 <b>Entreprises fréquentes:</b>\n"
+        companies_text += "\n".join(f"  {i+1}. {c} ({n})" for i, (c, n) in enumerate(top))
+
+    text = (
+        f"📈 <b>Rapport de la semaine {week_key}</b>\n\n"
+        f"🔔 Offres envoyées: <b>{jobs_sent}</b>\n"
+        f"✅ Candidatures: <b>{applied_week}</b>\n"
+        f"💾 Sauvegardées: <b>{saved_week}</b>"
+        f"{companies_text}"
+    )
+
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
+            timeout=10,
+        ).raise_for_status()
+        ws["report_sent"] = True
+        print("[weekly] Weekly report sent.")
+    except Exception as e:
+        print(f"[weekly] Failed to send weekly report: {e}")
+
+
+# ── Daily stats ──────────────────────────────────────────────────────────────
 
 def _update_daily_stats(state: dict, sent: int, irrelevant: int,
                         overqualified: int, wrong_location: int,
@@ -159,16 +261,35 @@ def run() -> None:
 
     candidates.sort(key=lambda x: x[0], reverse=True)
 
+    state = load_state()
+    digest_mode = state.get("digest_mode", False)
     sent = 0
-    for job_score, job in candidates:
-        try:
-            notifier.send(token, chat_id, job, job_score)
+
+    if digest_mode:
+        # Queue jobs for next digest window instead of sending immediately
+        for job_score, job in candidates:
+            storage.add_pending_job(job.id, job.title, job.company, job.url,
+                                    job.remote, job_score)
             storage.mark_seen(job.id, job.title, job.company)
             storage.store_sent_job(job.id, job.title, job.company, job.url)
             sent += 1
-            time.sleep(0.5)
-        except Exception as e:
-            print(f"[notify] failed for {job.id}: {e}")
+        if candidates:
+            print(f"[digest] Queued {sent} job(s) for next digest.")
+        # Send digest if it's time (morning or evening)
+        for period in ("morning", "evening"):
+            if _should_send_digest(state, period):
+                _send_digest(token, chat_id, state, period)
+    else:
+        # Real-time mode: send each job immediately
+        for job_score, job in candidates:
+            try:
+                notifier.send(token, chat_id, job, job_score)
+                storage.mark_seen(job.id, job.title, job.company)
+                storage.store_sent_job(job.id, job.title, job.company, job.url)
+                sent += 1
+                time.sleep(0.5)
+            except Exception as e:
+                print(f"[notify] failed for {job.id}: {e}")
 
     print(
         f"Done. Sent {sent} alert(s). "
@@ -178,10 +299,12 @@ def run() -> None:
         f"{skipped_spam} spam/duplicate."
     )
 
-    # Update daily stats and send evening summary if it's time
-    state = load_state()
-    _update_daily_stats(state, sent, skipped_relevance, skipped_experience, skipped_location, skipped_spam)
+    # Update stats and send reports if it's time
+    _update_daily_stats(state, sent, skipped_relevance, skipped_experience,
+                        skipped_location, skipped_spam)
+    _update_weekly_stats(state, sent)
     _maybe_send_daily_summary(state, token, chat_id)
+    _maybe_send_weekly_report(state, token, chat_id)
     save_state(state)
 
 

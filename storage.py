@@ -27,6 +27,13 @@ def _conn():
         "(job_id TEXT PRIMARY KEY, action TEXT, "
         " actioned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
     )
+    # Jobs queued for digest mode (not yet sent to Telegram)
+    c.execute(
+        "CREATE TABLE IF NOT EXISTS pending_jobs "
+        "(job_id TEXT PRIMARY KEY, title TEXT, company TEXT, url TEXT, "
+        " remote INTEGER DEFAULT 0, job_score INTEGER DEFAULT 0, "
+        " queued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+    )
     c.commit()
     return c
 
@@ -77,6 +84,45 @@ def mark_job_action(job_id: str, action: str) -> tuple | None:
         return row
 
 
+def add_pending_job(job_id: str, title: str, company: str, url: str,
+                    remote: bool, job_score: int) -> None:
+    """Queue a job for digest-mode delivery."""
+    with _conn() as c:
+        c.execute(
+            "INSERT OR IGNORE INTO pending_jobs "
+            "(job_id, title, company, url, remote, job_score) VALUES (?, ?, ?, ?, ?, ?)",
+            (job_id, title, company, url, int(remote), job_score),
+        )
+        c.commit()
+
+
+def get_pending_jobs() -> list:
+    """Return all queued jobs as (job_id, title, company, url, remote, job_score)."""
+    with _conn() as c:
+        return c.execute(
+            "SELECT job_id, title, company, url, remote, job_score "
+            "FROM pending_jobs ORDER BY job_score DESC, queued_at ASC"
+        ).fetchall()
+
+
+def clear_pending_jobs() -> None:
+    """Delete all queued jobs after digest is sent."""
+    with _conn() as c:
+        c.execute("DELETE FROM pending_jobs")
+        c.commit()
+
+
+def get_top_companies(days: int = 7) -> list:
+    """Return [(company, count)] top companies from sent jobs in last N days."""
+    with _conn() as c:
+        return c.execute(
+            """SELECT company, COUNT(*) as n FROM sent_jobs
+               WHERE sent_at >= datetime('now', ?)
+               GROUP BY company ORDER BY n DESC LIMIT 5""",
+            (f"-{days} days",),
+        ).fetchall()
+
+
 def remove_job_action(job_id: str) -> None:
     """Remove a saved/applied action (e.g. user unsaves a job)."""
     with _conn() as c:
@@ -117,6 +163,10 @@ def cleanup_old(days: int = 30) -> None:
         c.execute(
             """DELETE FROM job_actions WHERE job_id NOT IN
                (SELECT job_id FROM sent_jobs)""",
+        )
+        c.execute(
+            "DELETE FROM pending_jobs WHERE queued_at < datetime('now', ?)",
+            (f"-{days} days",),
         )
         c.commit()
 
