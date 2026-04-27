@@ -63,6 +63,50 @@ def is_valid_experience(job: Job) -> bool:
     return True
 
 
+def extract_exp_from_description(desc: str) -> tuple:
+    """
+    Parse years of experience required from description text.
+    Returns (min_years: int|None, display_label: str|None).
+    Handles French and English patterns.
+    """
+    if not desc:
+        return None, None
+
+    text = desc.lower()
+
+    # "débutant accepté" / "débutants acceptés" → 0 years
+    if re.search(r"d[ée]butant", text):
+        return 0, "Junior (débutant accepté)"
+
+    # Range: "1 à 3 ans", "2-3 ans", "0 to 2 years", "1–2 ans"
+    m = re.search(r"(\d+)\s*(?:à|a|-|–|to)\s*(\d+)\s*an(?:s|née|nées)?", text)
+    if not m:
+        m = re.search(r"(\d+)\s*(?:à|a|-|–|to)\s*(\d+)\s*year", text)
+    if m:
+        lo, hi = int(m.group(1)), int(m.group(2))
+        if 0 <= lo <= 10 and lo <= hi:
+            s = "ans" if hi > 1 else "an"
+            return lo, f"{lo}-{hi} {s} d'expérience"
+
+    # "X+ ans", "X ans minimum", "minimum X ans", "au moins X ans"
+    m = re.search(r"(\d+)\s*\+\s*an(?:s|née)?", text)
+    if not m:
+        m = re.search(r"(\d+)\s*an(?:s|née)?\s*(?:minimum|min\b|requis|d'exp)", text)
+    if not m:
+        m = re.search(r"(?:minimum|min\b|au moins|at least)\s*(?:de\s*)?(\d+)\s*an", text)
+    if not m:
+        m = re.search(r"expérience\s*(?:professionnelle\s*)?(?:de\s*)?[:\s]*(\d+)\s*an", text)
+    if not m:
+        m = re.search(r"(\d+)\s*\+?\s*year", text)
+    if m:
+        n = int(m.group(1))
+        if 1 <= n <= 10:
+            s = "ans" if n > 1 else "an"
+            return n, f"{n} {s} d'expérience"
+
+    return None, None
+
+
 def is_valid_description(job: Job, seen_hashes: set) -> bool:
     """
     Filter out ghost/spam jobs by description:

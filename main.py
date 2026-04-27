@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 import settings
 import storage
 import notifier
-from filter import is_relevant, is_valid_location, is_valid_experience, is_valid_description, score
+from filter import is_relevant, is_valid_location, is_valid_experience, is_valid_description, extract_exp_from_description, score
 from telegram_commands import process_commands, load_state, save_state
 from sources import france_travail, jobspy_scraper, welcome_jungle, apec
 
@@ -136,6 +136,11 @@ def run() -> None:
                 skipped_relevance += 1
                 print(f"[filter:relevance] {job.title} @ {job.company}")
                 continue
+            # Enrich experience_level from description text if not already set by the source
+            if job.experience_level is None and job.description:
+                _, label = extract_exp_from_description(job.description)
+                if label:
+                    job.experience_level = label
             if not is_valid_experience(job):
                 skipped_experience += 1
                 print(f"[filter:experience] {job.title} ({job.experience_level})")
