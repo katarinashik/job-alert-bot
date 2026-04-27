@@ -41,7 +41,14 @@ def is_valid_location(job: Job) -> bool:
     if job.remote:
         return True
     loc = (job.location or "").lower()
-    return any(city.lower() in loc for city in settings.OFFICE_LOCATIONS)
+    if any(city.lower() in loc for city in settings.OFFICE_LOCATIONS):
+        return True
+    # Some sources return location="France" even for city-specific jobs.
+    # Fall back to checking the title for the city name.
+    if loc in ("france", ""):
+        title = (job.title or "").lower()
+        return any(city.lower() in title for city in settings.OFFICE_LOCATIONS)
+    return False
 
 
 def is_valid_experience(job: Job) -> bool:

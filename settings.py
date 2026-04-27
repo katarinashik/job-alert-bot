@@ -36,7 +36,6 @@ SEARCH_KEYWORDS = [
     "analyste rh",
     # market research
     "market research analyst",
-    "chargé études",
 ]
 
 OFFICE_LOCATIONS = ["Montpellier", "Lyon"]
