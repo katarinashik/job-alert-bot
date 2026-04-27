@@ -47,7 +47,12 @@ def is_valid_location(job: Job) -> bool:
 def is_valid_experience(job: Job) -> bool:
     """Filter out jobs requiring 4+ years / senior level."""
     if job.experience_level:
-        if job.experience_level.lower() in SENIOR_LEVELS:
+        lvl = job.experience_level.lower()
+        if lvl in SENIOR_LEVELS:
+            return False
+        # Catch numeric labels: "4 ans d'expérience", "5+ ans", "4-6 ans" etc.
+        m = re.search(r"(\d+)\s*\+?\s*ans?", lvl)
+        if m and int(m.group(1)) >= 4:
             return False
 
     title = (job.title or "").lower()

@@ -181,8 +181,17 @@ def _query(
 
             exp = hit.get("experience_level_minimum")
             exp_label = None
-            if exp is not None and exp >= 5:
-                exp_label = "mid-senior level"
+            if exp is not None:
+                if exp == 0:
+                    exp_label = "Junior (0-2 ans)"
+                elif exp == 1:
+                    exp_label = "1-3 ans d'expérience"
+                elif exp == 2:
+                    exp_label = "2-4 ans d'expérience"
+                elif exp == 3:
+                    exp_label = "3-5 ans d'expérience"
+                elif exp >= 5:
+                    exp_label = f"{exp}+ ans d'expérience"
 
             yield Job(
                 id=job_id,

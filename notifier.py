@@ -21,9 +21,9 @@ class Job:
 
 # map LinkedIn job_level values to short French labels
 LEVEL_LABELS = {
-    "entry level": "Débutant / Junior",
+    "entry level": "Junior (0-2 ans)",
     "associate": "Junior / 1-3 ans",
-    "mid-senior level": "Intermédiaire / 2-5 ans",
+    "mid-senior level": "2-5 ans d'expérience",
     "director": None,
     "executive": None,
 }

@@ -12,6 +12,21 @@ LYON_CODE = "69381"
 DISTANCE_KM = 30
 
 
+def _ft_exp_label(libelle: str) -> str | None:
+    """Convert France Travail experienceLibelle to a display label."""
+    low = libelle.lower()
+    if "débutant" in low:
+        return "Junior (débutant accepté)"
+    # "1 An(s)" → "1 an d'expérience", "3 An(s)" → "3 ans d'expérience"
+    import re
+    m = re.match(r"(\d+)\s*an", low)
+    if m:
+        n = int(m.group(1))
+        s = "ans" if n > 1 else "an"
+        return f"{n} {s} d'expérience"
+    return libelle  # fallback: show raw text
+
+
 def _get_token(client_id: str, client_secret: str) -> str:
     for scope in ("api_offresdemploiv2 o2dsoffre", "api_offresdemploiv2"):
         r = requests.post(
@@ -119,6 +134,10 @@ def _query(
             raw_desc = item.get("description", "")
             description = raw_desc.strip() if raw_desc and raw_desc.strip() else None
 
+            # e.g. "Débutant accepté", "1 An(s)", "3 An(s)"
+            exp_libelle = item.get("experienceLibelle", "").strip()
+            experience_level = _ft_exp_label(exp_libelle) if exp_libelle else None
+
             yield Job(
                 id=job_id,
                 title=item.get("intitule", ""),
@@ -130,6 +149,7 @@ def _query(
                 remote=is_remote,
                 date_posted=date_posted,
                 description=description,
+                experience_level=experience_level,
             )
     except Exception as e:
         print(f"[france_travail] error: {e}")
