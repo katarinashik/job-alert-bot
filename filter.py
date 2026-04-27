@@ -81,9 +81,17 @@ def extract_exp_from_description(desc: str) -> tuple:
 
     text = desc.lower()
 
-    # "débutant accepté" / "débutants acceptés" → 0 years
+    # "débutant accepté" / "profil junior" / "première expérience" → 0-1 an
     if re.search(r"d[ée]butant", text):
         return 0, "Junior (débutant accepté)"
+    if re.search(r"premi[eè]re?\s+exp[eé]rience", text):
+        return 0, "Première expérience acceptée"
+    if re.search(r"profil\s+junior", text):
+        return 0, "Profil junior"
+    if re.search(r"junior\s+accept[eé]", text):
+        return 0, "Junior accepté"
+    if re.search(r"sans\s+exp[eé]rience", text):
+        return 0, "Sans expérience requise"
 
     # Range: "1 à 3 ans", "2-3 ans", "0 to 2 years", "1–2 ans"
     m = re.search(r"(\d+)\s*(?:à|a|-|–|to)\s*(\d+)\s*an(?:s|née|nées)?", text)
@@ -102,7 +110,9 @@ def extract_exp_from_description(desc: str) -> tuple:
     if not m:
         m = re.search(r"(?:minimum|min\b|au moins|at least)\s*(?:de\s*)?(\d+)\s*an", text)
     if not m:
-        m = re.search(r"expérience\s*(?:professionnelle\s*)?(?:de\s*)?[:\s]*(\d+)\s*an", text)
+        m = re.search(r"exp[eé]rience\s*(?:professionnelle\s*)?(?:de\s*)?[:\s]*(\d+)\s*an", text)
+    if not m:
+        m = re.search(r"justifi(?:ez|e)\s+d.{0,20}exp[eé]rience\s+(?:de\s*)?(\d+)", text)
     if not m:
         m = re.search(r"(\d+)\s*\+?\s*year", text)
     if m:
@@ -110,6 +120,10 @@ def extract_exp_from_description(desc: str) -> tuple:
         if 1 <= n <= 10:
             s = "ans" if n > 1 else "an"
             return n, f"{n} {s} d'expérience"
+
+    # "expérience confirmée" / "expérience significative" → senior (filtre hors)
+    if re.search(r"exp[eé]rience\s+(?:confirm[eé]e?|significative|solide|approfondie)", text):
+        return 5, "Expérience confirmée (senior)"
 
     return None, None
 

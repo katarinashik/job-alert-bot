@@ -3,6 +3,9 @@ from dataclasses import dataclass
 from typing import Optional
 from datetime import date
 
+MONTHS_FR = ["jan.", "fév.", "mar.", "avr.", "mai", "juin",
+             "juil.", "août", "sep.", "oct.", "nov.", "déc."]
+
 
 @dataclass
 class Job:
@@ -139,7 +142,8 @@ def send(token: str, chat_id: str, job: Job, job_score: int = 0) -> None:
         lines.append(f"🛠 {' · '.join(skills)}")
 
     if job.date_posted:
-        lines.append(f"📅 {job.date_posted.strftime('%d %b %Y')}")
+        d = job.date_posted
+        lines.append(f"📅 {d.day} {MONTHS_FR[d.month - 1]} {d.year}")
 
     if job.source:
         lines.append(f"📌 {job.source}")
