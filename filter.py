@@ -38,9 +38,16 @@ def is_relevant(title: str, company: str) -> bool:
 
 def is_valid_location(job: Job) -> bool:
     """Only keep: remote jobs OR jobs physically in Montpellier/Lyon."""
+    loc = (job.location or "").lower()
+
+    # Always reject blocked cities/countries (even for "remote" jobs —
+    # Luxembourg = different tax/legal jurisdiction; others are far/irrelevant)
+    for blocked in settings.BLOCKED_LOCATION_KEYWORDS:
+        if blocked in loc:
+            return False
+
     if job.remote:
         return True
-    loc = (job.location or "").lower()
     if any(city.lower() in loc for city in settings.OFFICE_LOCATIONS):
         return True
     # Some sources return location="France" even for city-specific jobs.
@@ -126,6 +133,27 @@ def extract_exp_from_description(desc: str) -> tuple:
         return 5, "Expérience confirmée (senior)"
 
     return None, None
+
+
+def _years_from_label(label: str) -> int | None:
+    """Extract the leading numeric year count from an experience label string."""
+    if not label:
+        return None
+    low = label.lower()
+    # Junior / débutant / no-exp signals → 0
+    if any(w in low for w in ("débutant", "junior", "sans expérience", "première expérience")):
+        return 0
+    m = re.search(r"(\d+)", low)
+    return int(m.group(1)) if m else None
+
+
+def is_valid_domain(job: Job) -> bool:
+    """Filter out jobs in irrelevant technical domains (checked in title + description)."""
+    combined = f"{job.title} {job.description or ''}".lower()
+    for kw in settings.BLOCKED_DOMAIN_KEYWORDS:
+        if kw in combined:
+            return False
+    return True
 
 
 def is_valid_description(job: Job, seen_hashes: set) -> bool:

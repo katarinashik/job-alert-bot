@@ -26,10 +26,8 @@ SEARCH_KEYWORDS = [
     "analyste crm",
     "product analyst",
     "analyste produit",
-    # operations / pricing
+    # operations
     "operations analyst",
-    "pricing analyst",
-    "analyste pricing",
     # HR / people
     "hr analyst",
     "people analyst",
@@ -67,6 +65,12 @@ BLOCKED_TITLE_WORDS = [
     "study participants", "data annotator", "ai trainer",
     "auditeur", "payroll", "restauration",
     "transformation digitale",
+    # IT/AMOA functional analyst (not data/BI)
+    "amoa", " moa ", "maîtrise d'ouvrage", "fonctionnel",
+    # ERP/ITSM specialist roles
+    "servicenow", "workday",
+    # Pricing (too niche / irrelevant)
+    "pricing",
 ]
 
 # title must contain at least one of these groups to be considered relevant
@@ -79,7 +83,6 @@ REQUIRED_DATA_WORDS = [
     "web", "digital", "e-commerce", "ecommerce",
     "crm", "product", "produit",
     "operations", "opérations",
-    "pricing", "prix",
     "people", "market",
 ]
 
@@ -91,7 +94,30 @@ SCORE_BOOST_TERMS = [
     "marketing analyst", "business analyst", "analyste métier",
     "web analyst", "digital analyst", "e-commerce analyst",
     "crm analyst", "product analyst", "analyste produit",
-    "pricing analyst", "operations analyst",
+    "operations analyst",
     "hr analyst", "people analyst", "market research",
     "sql", "python", "tableau", "looker",
+]
+
+# keywords in description/title that indicate irrelevant technical domain
+# checked against combined title + description text (lowercased)
+BLOCKED_DOMAIN_KEYWORDS = [
+    # Payment / card processing
+    "monétique", "monetique", "acquiring",
+    # Finance protocols
+    "t2s ", "target2",
+    # Insurance sub-domain
+    " iard ",
+    # Aerospace / defense
+    "aéronautique", "aeronautique",
+]
+
+# location substrings that are always rejected (even for "remote" jobs)
+# Luxembourg = different country/tax; others are far/irrelevant cities
+BLOCKED_LOCATION_KEYWORDS = [
+    "luxembourg",
+    "niort",
+    "bartenheim",
+    "chaumont",
+    "limoges",
 ]

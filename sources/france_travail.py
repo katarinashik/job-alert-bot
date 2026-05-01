@@ -77,14 +77,15 @@ def fetch(
     seen_ids: set[str] = set()
 
     for keyword in keywords:
-        # remote anywhere in France
+        # remote anywhere in France — modesTravail=3 = télétravail complet
         params_remote = {
             "motsCles": keyword,
             "minCreationDate": min_date,
             "maxCreationDate": max_date,
+            "modesTravail": "3",
             "range": "0-49",
         }
-        yield from _query(headers, params_remote, seen_ids, remote=True)
+        yield from _query(headers, params_remote, seen_ids, remote=False)
 
         # office near Montpellier / Lyon
         for code in commune_codes:
@@ -122,7 +123,19 @@ def _query(
             salary_str = salaire.get("libelle") or None
             lieu = item.get("lieuTravail", {})
             location = lieu.get("libelle", "France")
-            is_remote = remote or "télétravail" in item.get("description", "").lower()
+
+            # Detect remote strictly from France Travail's own location code.
+            # codePostal "00000" = France-wide / full télétravail in FT's system.
+            # Any real city code (75xxx, 69xxx, etc.) = office or hybrid → NOT remote.
+            # We can't trust description-based detection: FT data quality is poor
+            # and "télétravail possible" (hybrid) slips through modesTravail=3 filter.
+            loc_code = lieu.get("codePostal", "")
+            loc_libelle = (lieu.get("libelle") or "").lower()
+            is_remote = (
+                loc_code == "00000"
+                or "france entière" in loc_libelle
+                or "france entiere" in loc_libelle
+            )
 
             # parse date
             date_str = item.get("dateCreation", "")

@@ -4,10 +4,17 @@ import time
 import requests
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+
+# Ensure UTF-8 output on Windows terminals (cp1252 can't handle some Unicode job titles)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 import settings
 import storage
 import notifier
-from filter import is_relevant, is_valid_location, is_valid_experience, is_valid_description, extract_exp_from_description, score
+from filter import (is_relevant, is_valid_location, is_valid_experience,
+                    is_valid_description, is_valid_domain,
+                    extract_exp_from_description, _years_from_label, score)
 from telegram_commands import process_commands, load_state, save_state
 from sources import france_travail, jobspy_scraper, welcome_jungle, apec
 
@@ -230,6 +237,7 @@ def run() -> None:
     skipped_location = 0
     skipped_experience = 0
     skipped_spam = 0
+    skipped_domain = 0
     seen_desc_hashes: set[str] = set()
 
     for source in sources:
@@ -238,11 +246,20 @@ def run() -> None:
                 skipped_relevance += 1
                 print(f"[filter:relevance] {job.title} @ {job.company}")
                 continue
-            # Enrich experience_level from description text if not already set by the source
-            if job.experience_level is None and job.description:
-                _, label = extract_exp_from_description(job.description)
-                if label:
-                    job.experience_level = label
+
+            # Enrich experience_level from description.
+            # Always compare description vs source — take the stricter (higher) value.
+            # This catches France Travail saying "débutant" while the text says "5 ans".
+            if job.description:
+                desc_years, desc_label = extract_exp_from_description(job.description)
+                if desc_years is not None:
+                    if job.experience_level is None:
+                        job.experience_level = desc_label
+                    else:
+                        src_years = _years_from_label(job.experience_level)
+                        if src_years is None or desc_years > src_years:
+                            job.experience_level = desc_label
+
             if not is_valid_experience(job):
                 skipped_experience += 1
                 print(f"[filter:experience] {job.title} ({job.experience_level})")
@@ -250,6 +267,10 @@ def run() -> None:
             if not is_valid_location(job):
                 skipped_location += 1
                 print(f"[filter:location] {job.title} @ {job.company} — {job.location}")
+                continue
+            if not is_valid_domain(job):
+                skipped_domain += 1
+                print(f"[filter:domain] {job.title} @ {job.company}")
                 continue
             if not is_valid_description(job, seen_desc_hashes):
                 skipped_spam += 1
@@ -296,6 +317,7 @@ def run() -> None:
         f"Filtered: {skipped_relevance} irrelevant, "
         f"{skipped_experience} overqualified, "
         f"{skipped_location} wrong location, "
+        f"{skipped_domain} wrong domain, "
         f"{skipped_spam} spam/duplicate."
     )
 
