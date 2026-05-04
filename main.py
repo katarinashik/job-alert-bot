@@ -260,7 +260,12 @@ def run() -> None:
                         if src_years is None or desc_years > src_years:
                             job.experience_level = desc_label
 
-            if not is_valid_experience(job):
+            # Preferred companies bypass experience filter — user has 4y business
+            # experience and wants to see all roles from top-fit companies.
+            is_preferred = any(
+                p in job.company.lower() for p in settings.PREFERRED_COMPANIES
+            )
+            if not is_preferred and not is_valid_experience(job):
                 skipped_experience += 1
                 print(f"[filter:experience] {job.title} ({job.experience_level})")
                 continue
