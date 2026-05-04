@@ -38,8 +38,8 @@ SEARCH_KEYWORDS = [
 
 OFFICE_LOCATIONS = ["Montpellier", "Lyon"]
 
-# keep small — bot runs every 2h, 4h gives a safe buffer without flooding on restart
-MAX_JOB_AGE_HOURS = 4
+# bot runs every 2h, 6h = 3 runs of buffer — reduces missed jobs without flooding
+MAX_JOB_AGE_HOURS = 6
 
 # companies that spam job boards with gig/survey/non-relevant postings
 BLOCKED_COMPANIES = [
