@@ -34,6 +34,11 @@ def _conn():
         " remote INTEGER DEFAULT 0, job_score INTEGER DEFAULT 0, "
         " queued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
     )
+    # Persistent description hashes to detect spam templates across runs
+    c.execute(
+        "CREATE TABLE IF NOT EXISTS desc_hashes "
+        "(hash TEXT PRIMARY KEY, first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+    )
     c.commit()
     return c
 
@@ -146,6 +151,21 @@ def get_job_actions(action: str) -> list:
         ).fetchall()
 
 
+def is_desc_hash_seen(h: str) -> bool:
+    """True if this description hash was seen in a previous run."""
+    with _conn() as c:
+        return bool(c.execute(
+            "SELECT 1 FROM desc_hashes WHERE hash = ?", (h,)
+        ).fetchone())
+
+
+def add_desc_hash(h: str) -> None:
+    """Persist a description hash so future runs can detect duplicate templates."""
+    with _conn() as c:
+        c.execute("INSERT OR IGNORE INTO desc_hashes (hash) VALUES (?)", (h,))
+        c.commit()
+
+
 def cleanup_old(days: int = 30) -> None:
     with _conn() as c:
         c.execute(
@@ -166,6 +186,10 @@ def cleanup_old(days: int = 30) -> None:
         )
         c.execute(
             "DELETE FROM pending_jobs WHERE queued_at < datetime('now', ?)",
+            (f"-{days} days",),
+        )
+        c.execute(
+            "DELETE FROM desc_hashes WHERE first_seen < datetime('now', ?)",
             (f"-{days} days",),
         )
         c.commit()

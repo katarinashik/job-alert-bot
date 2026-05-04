@@ -1,6 +1,7 @@
 import re
 import hashlib
 import settings
+import storage
 from notifier import Job
 
 # job_level values from LinkedIn that indicate too much experience
@@ -160,8 +161,8 @@ def is_valid_description(job: Job, seen_hashes: set) -> bool:
     """
     Filter out ghost/spam jobs by description:
     - Skip if description is present but suspiciously short (< 200 chars)
-    - Skip if another job this run had the exact same description text
-      (same template copy-pasted across companies)
+    - Skip if contains known ghost-job phrase (e.g. "after 27 applicants")
+    - Skip if same description template was seen this run OR in a previous run
     If description is None (source doesn't provide it), let the job through.
     """
     desc = job.description
@@ -175,12 +176,26 @@ def is_valid_description(job: Job, seen_hashes: set) -> bool:
     if len(desc_clean) < MIN_DESCRIPTION_LENGTH:
         return False  # too short → likely spam / placeholder
 
+    # Check for known ghost-job / spam template phrases
+    desc_lower = desc_clean.lower()
+    for phrase in settings.BLOCKED_DESCRIPTION_PHRASES:
+        if phrase in desc_lower:
+            return False
+
     # Hash first 500 chars (normalised) to detect identical templates
     snippet = " ".join(desc_clean[:500].lower().split())
     h = hashlib.md5(snippet.encode()).hexdigest()
+
+    # In-run dedup
     if h in seen_hashes:
-        return False  # duplicate description already seen this run
+        return False
     seen_hashes.add(h)
+
+    # Cross-run dedup: reject if this exact template was seen before
+    if storage.is_desc_hash_seen(h):
+        return False
+    storage.add_desc_hash(h)
+
     return True
 
 

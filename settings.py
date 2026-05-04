@@ -52,6 +52,20 @@ BLOCKED_COMPANIES = [
     "outlier",
     "scale ai",
     "clickworker",
+    "peaktew",
+]
+
+# phrases in job description that indicate a ghost/spam template job
+# matched against lowercased description text
+BLOCKED_DESCRIPTION_PHRASES = [
+    # Fake LinkedIn "auto-close after N applicants" ghost jobs
+    "after 27 applicants",
+    "after 27 candidatures",
+    "automatically closing after 27",
+    "closes after 27",
+    "closing after 27",
+    # Other known ghost job signals
+    "submit your cv for consideration",  # paired with no real company name
 ]
 
 # job titles containing these words are always skipped
