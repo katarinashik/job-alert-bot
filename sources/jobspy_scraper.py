@@ -51,7 +51,7 @@ def _scrape(
             site_name=["linkedin", "indeed"],
             search_term=keyword,
             location=location,
-            results_wanted=25,
+            results_wanted=50,
             hours_old=max_age_hours,
             country_indeed="France",
             linkedin_fetch_description=True,
