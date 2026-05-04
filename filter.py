@@ -199,7 +199,12 @@ def is_valid_description(job: Job, seen_hashes: set) -> bool:
     return True
 
 
-def score(title: str) -> int:
+def score(title: str, company: str = "") -> int:
     """Higher score = more relevant. Used to sort alerts before sending."""
     t = title.lower()
-    return sum(1 for term in settings.SCORE_BOOST_TERMS if term in t)
+    c = company.lower()
+    s = sum(1 for term in settings.SCORE_BOOST_TERMS if term in t)
+    # +2 bonus for top-fit companies (profile match)
+    if any(pref in c for pref in settings.PREFERRED_COMPANIES):
+        s += 2
+    return s

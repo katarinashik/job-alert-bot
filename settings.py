@@ -111,6 +111,26 @@ SCORE_BOOST_TERMS = [
     "operations analyst",
     "hr analyst", "people analyst", "market research",
     "sql", "python", "tableau", "looker",
+    # Top-fit industries (boost relevance ranking)
+    "média", "media", "streaming", "contenu", "content",
+    "saas", "startup", "scale-up",
+    "marketplace", "e-commerce", "ecommerce",
+    "performance commerciale", "kpi", "dashboard", "tableau de bord",
+]
+
+# Companies that are a strong profile match — get +2 score bonus.
+# Checked against company name (lowercased, partial match).
+PREFERRED_COMPANIES = [
+    # Media / Creator Economy
+    "jellysmack", "brut", "dailymotion", "canal", "webedia", "prisma",
+    # SaaS / Tech startups
+    "agicap", "pennylane", "partoo", "swile", "contentsquare",
+    # E-commerce / Marketplace
+    "cdiscount", "veepee", "manomano", "vinted",
+    # Digital agencies / Analytics consulting
+    "artefact", "fifty-five", "jellyfish", "converteo",
+    # Lyon-based companies that hire regularly
+    "biomerieux", "bioxmerieux", "sanofi", "gl events", "infopro", "cegid",
 ]
 
 # keywords in description/title that indicate irrelevant technical domain

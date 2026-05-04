@@ -278,7 +278,7 @@ def run() -> None:
                 continue
             if not storage.is_new(job.id, job.title, job.company):
                 continue
-            candidates.append((score(job.title), job))
+            candidates.append((score(job.title, job.company), job))
 
     candidates.sort(key=lambda x: x[0], reverse=True)
 
