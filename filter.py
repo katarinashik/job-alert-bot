@@ -7,6 +7,40 @@ from notifier import Job
 # job_level values from LinkedIn that indicate too much experience
 SENIOR_LEVELS = {"director", "executive"}
 
+_PARIS_SIGNALS = [
+    " paris ", "paris,", "paris\n", "(paris)", "paris 1", "paris 2",
+    "paris 3", "paris 4", "paris 5", "paris 6", "paris 7", "paris 8",
+    "paris 9", "paris 10", "paris 11", "paris 12", "paris 13",
+    "paris 14", "paris 15", "paris 16", "paris 17", "paris 18",
+    "paris 19", "paris 20",
+    "75001", "75002", "75003", "75004", "75005", "75006", "75007",
+    "75008", "75009", "75010", "75011", "75012", "75013", "75014",
+    "75015", "75016", "75017", "75018", "75019", "75020",
+    "île-de-france", "ile-de-france",
+    "levallois", "boulogne-billancourt", "neuilly-sur-seine",
+    "la défense", "la defense",
+]
+
+_FULL_REMOTE_SIGNALS = [
+    "100% remote", "100% télétravail", "full remote", "fully remote",
+    "télétravail complet", "full télétravail", "remote first",
+    "remote-first", "remote only", "entièrement en télétravail",
+    "100 % télétravail",
+]
+
+
+def _is_paris_only(job: Job) -> bool:
+    loc = (job.location or "").lower()
+    if "paris" in loc and not any(c.lower() in loc for c in settings.OFFICE_LOCATIONS):
+        return True
+    desc = (job.description or "").lower()
+    if not desc:
+        return False
+    if any(sig in desc for sig in _FULL_REMOTE_SIGNALS):
+        return False
+    header = desc[:400]
+    return any(sig in header for sig in _PARIS_SIGNALS)
+
 # Minimum description length to not be considered spam
 MIN_DESCRIPTION_LENGTH = 200
 
@@ -48,6 +82,8 @@ def is_valid_location(job: Job) -> bool:
             return False
 
     if job.remote:
+        if _is_paris_only(job):
+            return False
         return True
     if any(city.lower() in loc for city in settings.OFFICE_LOCATIONS):
         return True
