@@ -239,6 +239,7 @@ def run() -> None:
     skipped_spam = 0
     skipped_domain = 0
     seen_desc_hashes: set[str] = set()
+    seen_candidate_fps: set[str] = set()
 
     for source in sources:
         for job in source:
@@ -283,6 +284,10 @@ def run() -> None:
                 continue
             if not storage.is_new(job.id, job.title, job.company):
                 continue
+            fp = f"{job.title.lower().strip()}|{job.company.lower().strip()}"
+            if fp in seen_candidate_fps:
+                continue
+            seen_candidate_fps.add(fp)
             candidates.append((score(job.title, job.company), job))
 
     candidates.sort(key=lambda x: x[0], reverse=True)
