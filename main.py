@@ -13,7 +13,7 @@ import settings
 import storage
 import notifier
 from filter import (is_relevant, is_valid_location, is_valid_experience,
-                    is_valid_description, is_valid_domain,
+                    is_valid_description, is_valid_domain, is_valid_salary,
                     extract_exp_from_description, _years_from_label, score)
 from telegram_commands import process_commands, load_state, save_state
 from sources import france_travail, jobspy_scraper, welcome_jungle, apec
@@ -238,6 +238,7 @@ def run() -> None:
     skipped_experience = 0
     skipped_spam = 0
     skipped_domain = 0
+    skipped_salary = 0
     seen_desc_hashes: set[str] = set()
     seen_candidate_fps: set[str] = set()
 
@@ -277,6 +278,10 @@ def run() -> None:
             if not is_valid_domain(job):
                 skipped_domain += 1
                 print(f"[filter:domain] {job.title} @ {job.company}")
+                continue
+            if not is_valid_salary(job):
+                skipped_salary += 1
+                print(f"[filter:salary] {job.title} — {job.salary}")
                 continue
             if not is_valid_description(job, seen_desc_hashes):
                 skipped_spam += 1
@@ -328,6 +333,7 @@ def run() -> None:
         f"{skipped_experience} overqualified, "
         f"{skipped_location} wrong location, "
         f"{skipped_domain} wrong domain, "
+        f"{skipped_salary} low salary, "
         f"{skipped_spam} spam/duplicate."
     )
 

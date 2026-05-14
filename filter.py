@@ -235,6 +235,36 @@ def is_valid_description(job: Job, seen_hashes: set) -> bool:
     return True
 
 
+def _parse_annual_salary(salary_str: str) -> float | None:
+    """Extract minimum annual salary in EUR from various format strings."""
+    if not salary_str:
+        return None
+    s = salary_str.lower()
+    # France Travail: "annuel de 28000.0 euros à 32000.0 euros"
+    m = re.search(r"annuel\s+de\s+([\d.]+)", s)
+    if m:
+        return float(m.group(1))
+    # jobspy: "28,000–32,000 €/yearly" or "from 28,000 €/yearly"
+    if "year" in s or "/an" in s or "annuel" in s:
+        nums = re.findall(r"\d[\d\s,]*\d|\d+", s.replace(",", "").replace(" ", ""))
+        nums = [int(n) for n in nums if len(n) >= 4]
+        if nums:
+            return float(min(nums))
+    # "32k€" or "32 k€"
+    m = re.search(r"(\d+)\s*k", s)
+    if m:
+        return float(m.group(1)) * 1000
+    return None
+
+
+def is_valid_salary(job: "Job") -> bool:
+    """Return False only if salary is explicitly stated and below the minimum."""
+    annual = _parse_annual_salary(job.salary or "")
+    if annual is None:
+        return True  # unknown salary → don't filter
+    return annual >= settings.MIN_ANNUAL_SALARY_EUR
+
+
 def score(title: str, company: str = "") -> int:
     """Higher score = more relevant. Used to sort alerts before sending."""
     t = title.lower()

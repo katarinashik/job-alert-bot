@@ -43,16 +43,14 @@ MAX_JOB_AGE_HOURS = 6
 
 # companies that spam job boards with gig/survey/non-relevant postings
 BLOCKED_COMPANIES = [
-    "prolific",
-    "alignerr",
-    "mercor",
-    "remotasks",
-    "appen",
-    "telus international",
-    "outlier",
-    "scale ai",
-    "clickworker",
-    "peaktew",
+    "prolific", "alignerr", "mercor", "remotasks", "appen",
+    "telus international", "outlier", "scale ai", "clickworker", "peaktew",
+    # ESN / IT consulting firms (post IT-BA / AMOA jobs, not data analyst)
+    "sopra steria", "amiltone", "it link", "alteca", "amaris", "celad",
+    "argain", "nexton", "consultys", "alcyor", "shape it",
+    "collective.work", "collectivework",
+    # Gaming / gambling operators
+    "b2spin", "patrianna",
 ]
 
 # phrases in job description that indicate a ghost/spam template job
@@ -65,14 +63,14 @@ BLOCKED_DESCRIPTION_PHRASES = [
     "closes after 27",
     "closing after 27",
     # Other known ghost job signals
-    "submit your cv for consideration",  # paired with no real company name
+    "submit your cv for consideration",
 ]
 
 # job titles containing these words are always skipped
 BLOCKED_TITLE_WORDS = [
     "stage", "stagiaire", "alternance", "alternant", "alternante",
     "apprenticeship", "apprentice", "apprenti", "apprentie",
-    "internship", "intern", "pfm", "pfe",
+    "internship", "intern", "intérim", "interim", "pfm", "pfe",
     "senior", "lead ", "expert ", "manager ", "head of",
     "directeur", "director", "chef de", "responsable de",
     "confirmé", "confirme", "expérimenté", "experimente",
@@ -81,8 +79,8 @@ BLOCKED_TITLE_WORDS = [
     "transformation digitale",
     # IT/AMOA functional analyst (not data/BI)
     "amoa", " moa ", "maîtrise d'ouvrage", "fonctionnel",
-    # ERP/ITSM specialist roles
-    "servicenow", "workday",
+    # ERP/ITSM/developer specialist roles
+    "servicenow", "workday", "dynamics 365",
     # Pricing (too niche / irrelevant)
     "pricing",
 ]
@@ -137,21 +135,36 @@ PREFERRED_COMPANIES = [
 # checked against combined title + description text (lowercased)
 BLOCKED_DOMAIN_KEYWORDS = [
     # Payment / card processing
-    "monétique", "monetique", "acquiring",
+    "monétique", "monetique", "acquiring", "billettique",
     # Finance protocols
     "t2s ", "target2",
     # Insurance sub-domain
     " iard ",
     # Aerospace / defense
-    "aéronautique", "aeronautique",
+    "aéronautique", "aeronautique", "défense nationale",
+    # Pharma / life sciences (highly specialized, not BI-generalist)
+    " pharma", "biotech", "life sciences", "sciences de la vie", " lims ",
+    # Supply chain / logistics specialist
+    "supply chain",
+    # Gaming / gambling
+    "casino", "gambling", "social gaming",
+    # IT tools indicating specialist (not analyst) role
+    "dynamics 365", "dynamics365", "gainsight", " cpq ",
+    # IT BA / AMOA signals in description (writing specs, not analyzing data)
+    "spécifications fonctionnelles", "user stories", " uml ",
+    "architecture si", "architecture du si",
 ]
 
-# location substrings that are always rejected (even for "remote" jobs)
-# Luxembourg = different country/tax; others are far/irrelevant cities
+# location substrings always rejected (even for "remote" jobs)
+# Non-France countries → different legal/tax system
+# Small irrelevant French cities → not worth relocating
 BLOCKED_LOCATION_KEYWORDS = [
-    "luxembourg",
-    "niort",
-    "bartenheim",
-    "chaumont",
-    "limoges",
+    # Non-France countries
+    "canada", "états-unis", "etats-unis", "united states", " usa", "gibraltar",
+    # Small/irrelevant French cities (these rarely post true remote)
+    "luxembourg", "niort", "bartenheim", "chaumont", "limoges",
 ]
+
+# Minimum annual salary in EUR — jobs with salary explicitly below this are skipped.
+# Only applied when salary is clearly stated; unknown salary = not filtered.
+MIN_ANNUAL_SALARY_EUR = 35000
