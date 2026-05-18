@@ -46,9 +46,11 @@ BLOCKED_COMPANIES = [
     "prolific", "alignerr", "mercor", "remotasks", "appen",
     "telus international", "outlier", "scale ai", "clickworker", "peaktew",
     # ESN / IT consulting firms (post IT-BA / AMOA jobs, not data analyst)
-    "sopra steria", "amiltone", "it link", "alteca", "amaris", "celad",
+    "sopra steria", "sopra ", "amiltone", "it link", "alteca", "amaris", "celad",
     "argain", "nexton", "consultys", "alcyor", "shape it",
     "collective.work", "collectivework",
+    "akkodis", "capgemini", "extia", "caveo", "coexya", "alten", "atos ",
+    "cgi ", "devoteam", "talan",
     # Gaming / gambling operators
     "b2spin", "patrianna",
 ]
@@ -109,7 +111,10 @@ SCORE_BOOST_TERMS = [
     "operations analyst",
     "hr analyst", "people analyst", "market research",
     "sql", "python", "tableau", "looker",
-    # Top-fit industries (boost relevance ranking)
+    # Tool combinations (strong BI signal)
+    "sql et python", "python et sql", "power bi et sql", "sql + python",
+    # Top-fit industries & analytics disciplines
+    "product analytics", "marketing analytics", "growth analytics",
     "média", "media", "streaming", "contenu", "content",
     "saas", "startup", "scale-up",
     "marketplace", "e-commerce", "ecommerce",
@@ -150,9 +155,15 @@ BLOCKED_DOMAIN_KEYWORDS = [
     "casino", "gambling", "social gaming",
     # IT tools indicating specialist (not analyst) role
     "dynamics 365", "dynamics365", "gainsight", " cpq ",
-    # IT BA / AMOA signals in description (writing specs, not analyzing data)
+    # IT BA / AMOA signals in description (writing specs/testing, not analyzing data)
     "spécifications fonctionnelles", "user stories", " uml ",
     "architecture si", "architecture du si",
+    " bpmn ", "recette fonctionnelle", "tests de recette", " tnr ",
+    # Salesforce developer tools (not BI)
+    "salesforce field service", " apex ", "salesforce apex",
+    # Insurance / banking / mutual fund sector (generates AMOA BA jobs)
+    "secteur bancaire", "secteur de l'assurance", " mutuelle ", " prévoyance ",
+    " prevoyance ", "bancaire",
 ]
 
 # location substrings always rejected (even for "remote" jobs)
