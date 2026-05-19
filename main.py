@@ -14,7 +14,8 @@ import storage
 import notifier
 from filter import (is_relevant, is_valid_location, is_valid_experience,
                     is_valid_description, is_valid_domain, is_valid_salary,
-                    extract_exp_from_description, _years_from_label, score)
+                    extract_exp_from_description, _years_from_label, score,
+                    fit_score)
 from telegram_commands import process_commands, load_state, save_state
 from sources import france_travail, jobspy_scraper, welcome_jungle, apec
 
@@ -319,7 +320,8 @@ def run() -> None:
         # Real-time mode: send each job immediately
         for job_score, job in candidates:
             try:
-                notifier.send(token, chat_id, job, job_score)
+                notifier.send(token, chat_id, job, job_score,
+                          fit_pct=fit_score(job))
                 storage.mark_seen(job.id, job.title, job.company)
                 storage.store_sent_job(job.id, job.title, job.company, job.url)
                 sent += 1

@@ -105,27 +105,34 @@ def extract_skills(description: str) -> list[str]:
     return [s for s in found if not any(s != o and s in o for o in found)]
 
 
-def _stars(job_score: int) -> str:
-    if job_score <= 0:
-        return ""
-    if job_score == 1:
-        return "⭐ "
-    if job_score == 2:
-        return "⭐⭐ "
-    return "⭐⭐⭐ "
+def _fit_line(pct: int) -> str:
+    """Format fit percentage with colour indicator."""
+    if pct >= 75:
+        icon = "🟢"
+    elif pct >= 50:
+        icon = "🟡"
+    elif pct >= 30:
+        icon = "🟠"
+    else:
+        icon = "🔴"
+    return f"{icon} Fit: {pct}%"
 
 
-def send(token: str, chat_id: str, job: Job, job_score: int = 0) -> None:
-    stars = _stars(job_score)
+def send(token: str, chat_id: str, job: Job, job_score: int = 0,
+         fit_pct: int = 0) -> None:
     company_line = f"🏢 {_esc(job.company)}"
     if job.company_size:
         company_line += f"  👥 {_esc(job.company_size)}"
-    lines = [f"{stars}*{_esc(job.title)}*", company_line]
+    lines = [f"*{_esc(job.title)}*", company_line]
 
     if job.location:
         lines.append(f"📍 {_esc(job.location)}")
     if job.remote:
         lines.append("🌍 Remote / Télétravail")
+
+    # Fit percentage (shown only when description was available to score)
+    if fit_pct > 0:
+        lines.append(_fit_line(fit_pct))
 
     level_label = LEVEL_LABELS.get((job.experience_level or "").lower())
     if level_label:
@@ -150,25 +157,13 @@ def send(token: str, chat_id: str, job: Job, job_score: int = 0) -> None:
 
     lines.append(f"🔗 [Voir l'offre]({job.url})")
 
-    text = "\n".join(lines)
-
-    # Inline action buttons — callback data: "action|job_id"
-    keyboard = {
-        "inline_keyboard": [[
-            {"text": "✅ Postulée",     "callback_data": f"applied|{job.id}"},
-            {"text": "💾 Sauvegarder", "callback_data": f"save|{job.id}"},
-            {"text": "❌ Ignorer",      "callback_data": f"ignore|{job.id}"},
-        ]]
-    }
-
     requests.post(
         f"https://api.telegram.org/bot{token}/sendMessage",
         json={
             "chat_id": chat_id,
-            "text": text,
+            "text": "\n".join(lines),
             "parse_mode": "Markdown",
             "disable_web_page_preview": True,
-            "reply_markup": keyboard,
         },
         timeout=10,
     ).raise_for_status()

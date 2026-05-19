@@ -88,10 +88,10 @@ def is_valid_location(job: Job) -> bool:
     if any(city.lower() in loc for city in settings.OFFICE_LOCATIONS):
         return True
     # Some sources return location="France" even for city-specific jobs.
-    # Fall back to checking the title for the city name.
+    # Search city in title AND description — more reliable than title alone.
     if loc in ("france", ""):
-        title = (job.title or "").lower()
-        return any(city.lower() in title for city in settings.OFFICE_LOCATIONS)
+        text = f"{job.title or ''} {job.description or ''}".lower()
+        return any(city.lower() in text for city in settings.OFFICE_LOCATIONS)
     return False
 
 
@@ -274,3 +274,63 @@ def score(title: str, company: str = "") -> int:
     if any(pref in c for pref in settings.PREFERRED_COMPANIES):
         s += 2
     return s
+
+
+# ── Fit score ────────────────────────────────────────────────────────────────
+# Weighted keyword groups — scored against title + full description text.
+# Each group has a cap so one signal can't dominate the score.
+
+_FIT_TOOLS = {          # max 35 pts — BI/analytics tools
+    "power bi": 10, "powerbi": 10,
+    "looker studio": 8, "looker": 7,
+    "google data studio": 7, "google analytics": 5,
+    "tableau": 7, "metabase": 5, "amplitude": 5, "mixpanel": 5,
+    "sql": 9, "python": 8,
+    "excel": 3, "google sheets": 2,
+    "dbt": 4, "airflow": 3, "bigquery": 4, "snowflake": 3,
+}
+
+_FIT_ROLE = {           # max 30 pts — BI/analytics work signals
+    "dashboard": 6, "tableau de bord": 6,
+    "kpi": 5, "indicateurs": 4,
+    "reporting": 5, "rapport": 3,
+    "product analytics": 7, "marketing analytics": 7, "growth analytics": 6,
+    "a/b test": 5, "ab test": 5, "test a/b": 5,
+    "visualisation": 4, "data viz": 4,
+    "performance commerciale": 5, "analyse commerciale": 5,
+    "entrepôt de données": 4, "datawarehouse": 4, "data warehouse": 4,
+}
+
+_FIT_INDUSTRY = {       # max 25 pts — industries matching candidate background
+    "saas": 12, "startup": 9, "scale-up": 9,
+    "e-commerce": 10, "ecommerce": 10, "marketplace": 10,
+    "média": 9, "media": 9, "streaming": 9, "contenu": 6, "content": 6,
+    "retail": 6, "fmcg": 6, "digital": 5, "tech": 5,
+}
+
+_FIT_LEVEL = {          # max 10 pts — junior-friendly signals
+    "junior": 10, "débutant": 10, "sans expérience": 10,
+    "première expérience": 9, "0-2 ans": 9, "1-2 ans": 8, "1-3 ans": 7,
+}
+
+
+def fit_score(job: Job) -> int:
+    """
+    Calculate candidate fit percentage (0–100) from job description content.
+    Based on BI tools, analytics work signals, industry match, and level fit.
+    """
+    combined = f"{job.title} {job.description or ''}".lower()
+
+    tools_pts    = min(35, sum(v for k, v in _FIT_TOOLS.items()    if k in combined))
+    role_pts     = min(30, sum(v for k, v in _FIT_ROLE.items()     if k in combined))
+    industry_pts = min(25, sum(v for k, v in _FIT_INDUSTRY.items() if k in combined))
+    level_pts    = min(10, sum(v for k, v in _FIT_LEVEL.items()    if k in combined))
+
+    # Neutral industry baseline so "unknown industry" doesn't score 0
+    if industry_pts == 0:
+        industry_pts = 6
+
+    # Preferred company bonus (replaces company-type penalty for ESNs already filtered)
+    company_bonus = 5 if any(p in job.company.lower() for p in settings.PREFERRED_COMPANIES) else 0
+
+    return min(100, tools_pts + role_pts + industry_pts + level_pts + company_bonus)
