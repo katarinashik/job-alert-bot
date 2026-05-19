@@ -277,60 +277,99 @@ def score(title: str, company: str = "") -> int:
 
 
 # ── Fit score ────────────────────────────────────────────────────────────────
-# Weighted keyword groups — scored against title + full description text.
-# Each group has a cap so one signal can't dominate the score.
+# Calibrated to Katerina Shick's profile:
+# Tools: SQL, Python, Power BI, Looker Studio, BigQuery, dbt, A/B testing
+# Experience: Jellysmack (media/digital scale-up), La Brigade de Véro (e-commerce/LTV)
+# Le Wagon bootcamp 2025: SQL/BigQuery, dbt, Fivetran, Python, Power BI
+# Target: Data Analyst / Performance Analyst / Product Analyst
 
-_FIT_TOOLS = {          # max 35 pts — BI/analytics tools
+_FIT_TOOLS = {          # max 35 pts — tools she actually knows
+    # BI / visualisation
     "power bi": 10, "powerbi": 10,
-    "looker studio": 8, "looker": 7,
-    "google data studio": 7, "google analytics": 5,
-    "tableau": 7, "metabase": 5, "amplitude": 5, "mixpanel": 5,
-    "sql": 9, "python": 8,
-    "excel": 3, "google sheets": 2,
-    "dbt": 4, "airflow": 3, "bigquery": 4, "snowflake": 3,
+    "looker studio": 9, "looker": 7,
+    "google data studio": 7,
+    "google analytics": 5,
+    "tableau": 6, "metabase": 5,
+    "amplitude": 5, "mixpanel": 5,
+    # Core data languages
+    "sql": 10, "python": 9,
+    # Data stack (Le Wagon trained)
+    "bigquery": 8, "dbt": 7, "fivetran": 5,
+    # Other tools
+    "excel": 3, "google sheets": 3,
+    "airflow": 3, "snowflake": 3,
 }
 
-_FIT_ROLE = {           # max 30 pts — BI/analytics work signals
+_FIT_ROLE = {           # max 30 pts — analytics work she's done
+    # Dashboards & reporting
     "dashboard": 6, "tableau de bord": 6,
     "kpi": 5, "indicateurs": 4,
     "reporting": 5, "rapport": 3,
+    # Customer / e-commerce analytics (La Brigade de Véro experience)
+    "ltv": 8, "lifetime value": 8, "valeur vie client": 8,
+    "segmentation": 7, "rfm": 7, "persona": 5,
+    "rétention": 6, "retention": 6, "churn": 6,
+    "acquisition": 5, "taux de conversion": 5, "conversion rate": 5,
+    "panier moyen": 4, "customer analytics": 6,
+    # Performance & growth (Jellysmack experience)
+    "performance commerciale": 6, "analyse commerciale": 5,
     "product analytics": 7, "marketing analytics": 7, "growth analytics": 6,
-    "a/b test": 5, "ab test": 5, "test a/b": 5,
+    "growth hacking": 5, "growth": 4,
+    # Testing & stats
+    "a/b test": 6, "ab test": 6, "test a/b": 6, "expérimentation": 5,
+    "forecasting": 5, "prévision": 4,
+    # Data quality (she specifically did this)
+    "qualité des données": 5, "data quality": 5, "anomalie": 4,
+    # General BI
     "visualisation": 4, "data viz": 4,
-    "performance commerciale": 5, "analyse commerciale": 5,
     "entrepôt de données": 4, "datawarehouse": 4, "data warehouse": 4,
+    "pipeline": 3, "etl": 3,
 }
 
-_FIT_INDUSTRY = {       # max 25 pts — industries matching candidate background
-    "saas": 12, "startup": 9, "scale-up": 9,
-    "e-commerce": 10, "ecommerce": 10, "marketplace": 10,
-    "média": 9, "media": 9, "streaming": 9, "contenu": 6, "content": 6,
-    "retail": 6, "fmcg": 6, "digital": 5, "tech": 5,
+_FIT_INDUSTRY = {       # max 25 pts — industries from her background
+    # Direct experience
+    "e-commerce": 12, "ecommerce": 12,
+    "média": 11, "media": 11, "streaming": 10,
+    "scale-up": 10, "scaleup": 10,
+    "marketplace": 9,
+    # Adjacent / good fit
+    "saas": 9, "startup": 8,
+    "digital": 6, "contenu": 6, "content": 6,
+    "food": 5, "foodtech": 5, "livraison": 4,
+    "retail": 5, "fmcg": 5,
+    "tech": 4,
 }
 
-_FIT_LEVEL = {          # max 10 pts — junior-friendly signals
+_FIT_LEVEL = {          # max 10 pts — junior / early-career signals
     "junior": 10, "débutant": 10, "sans expérience": 10,
-    "première expérience": 9, "0-2 ans": 9, "1-2 ans": 8, "1-3 ans": 7,
+    "première expérience": 9,
+    "0-2 ans": 9, "0 à 2 ans": 9,
+    "1-2 ans": 8, "1-3 ans": 7, "2-3 ans": 6,
 }
 
 
 def fit_score(job: Job) -> int:
     """
     Calculate candidate fit percentage (0–100) from job description content.
-    Based on BI tools, analytics work signals, industry match, and level fit.
+    Calibrated to Katerina Shick's profile (SQL/Python/Power BI/Looker,
+    e-commerce + media background, Le Wagon 2025 bootcamp).
+    Returns 0 if no description available (not displayed in Telegram).
     """
-    combined = f"{job.title} {job.description or ''}".lower()
+    if not job.description or len(job.description.strip()) < 100:
+        return 0  # no meaningful description → don't display fit
+
+    combined = f"{job.title} {job.description}".lower()
 
     tools_pts    = min(35, sum(v for k, v in _FIT_TOOLS.items()    if k in combined))
     role_pts     = min(30, sum(v for k, v in _FIT_ROLE.items()     if k in combined))
     industry_pts = min(25, sum(v for k, v in _FIT_INDUSTRY.items() if k in combined))
     level_pts    = min(10, sum(v for k, v in _FIT_LEVEL.items()    if k in combined))
 
-    # Neutral industry baseline so "unknown industry" doesn't score 0
+    # Neutral industry baseline — unknown industry ≠ zero fit
     if industry_pts == 0:
-        industry_pts = 6
+        industry_pts = 5
 
-    # Preferred company bonus (replaces company-type penalty for ESNs already filtered)
+    # Preferred company bonus
     company_bonus = 5 if any(p in job.company.lower() for p in settings.PREFERRED_COMPANIES) else 0
 
     return min(100, tools_pts + role_pts + industry_pts + level_pts + company_bonus)
