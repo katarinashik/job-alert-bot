@@ -63,6 +63,11 @@ def is_relevant(title: str, company: str) -> bool:
         if re.search(rf"\b{re.escape(word.strip())}\b", t):
             return False
 
+    # Exception: "junior data" in title always passes role check
+    # (catches "Consultant Data Junior", "Chargé Data Junior", etc.)
+    if "junior" in t and "data" in t:
+        return True
+
     # Pad with spaces so " bi " matches "bi analyst" at start of string too
     padded = f" {t} "
     has_role = any(w in padded for w in settings.REQUIRED_ROLE_WORDS)
