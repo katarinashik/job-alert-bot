@@ -196,7 +196,12 @@ def cleanup_old(days: int = 30) -> None:
 
 
 def _fingerprint(title: str, company: str) -> str:
-    return _norm(title) + "|" + _norm(company)
+    norm_title = _norm(title)
+    norm_company = _norm(company)
+    # Use only the first word of the company name to catch cross-source duplicates
+    # e.g. "Catalina Marketing Costa Rica" (LinkedIn) vs "Catalina" (Indeed)
+    first_word = norm_company.split()[0] if norm_company.split() else norm_company
+    return norm_title + "|" + first_word
 
 
 def _norm(text: str) -> str:
