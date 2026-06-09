@@ -43,7 +43,7 @@ MAX_JOB_AGE_HOURS = 6
 
 # companies that spam job boards with gig/survey/non-relevant postings
 BLOCKED_COMPANIES = [
-    "prolific", "alignerr", "mercor", "remotasks", "appen",
+    "prolific", "alignerr", "mercor", "remotasks", "appen", "jobgether",
     "telus international", "outlier", "scale ai", "clickworker", "peaktew",
     # ESN / IT consulting firms (post IT-BA / AMOA jobs, not data analyst)
     "sopra steria", "sopra ", "amiltone", "it link", "alteca", "amaris", "celad",
