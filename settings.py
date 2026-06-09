@@ -53,6 +53,8 @@ BLOCKED_COMPANIES = [
     "cgi ", "devoteam", "talan",
     # Gaming / gambling operators
     "b2spin", "patrianna",
+    # Job aggregators that repost others' jobs under their own name
+    "jobgether",
 ]
 
 # phrases in job description that indicate a ghost/spam template job
