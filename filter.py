@@ -76,24 +76,40 @@ def is_relevant(title: str, company: str) -> bool:
     return has_role and has_data
 
 
+def _is_european_location(loc: str) -> bool:
+    """True if the location string names France or another EU/EEA country."""
+    return any(c in loc for c in settings.EUROPEAN_COUNTRIES)
+
+
 def is_valid_location(job: Job) -> bool:
-    """Only keep: remote jobs OR jobs physically in Montpellier/Lyon."""
+    """Keep only:
+      - jobs physically in a target office city (Montpellier/Lyon), or
+      - full-remote jobs based in France or another EU/EEA country.
+    Everything else — wrong French city, non-European country, hybrid jobs
+    outside the target cities, or unknown location — is rejected.
+    """
     loc = (job.location or "").lower()
 
-    # Always reject blocked cities/countries (even for "remote" jobs —
-    # Luxembourg = different tax/legal jurisdiction; others are far/irrelevant)
+    # Hard blocklist always wins (Luxembourg tax jurisdiction, non-FR countries,
+    # small irrelevant French cities).
     for blocked in settings.BLOCKED_LOCATION_KEYWORDS:
         if blocked in loc:
             return False
 
+    # Office jobs in a target city are always fine (incl. hybrid in Lyon/Montpellier).
+    if any(city.lower() in loc for city in settings.OFFICE_LOCATIONS):
+        return True
+
     if job.remote:
         if _is_paris_only(job):
             return False
-        return True
-    if any(city.lower() in loc for city in settings.OFFICE_LOCATIONS):
-        return True
-    # Some sources return location="France" even for city-specific jobs.
-    # Search city in title AND description — more reliable than title alone.
+        # Remote allowed only inside France / EU / EEA.
+        # Unknown location ("") fails this check → rejected (safer than leaking).
+        return _is_european_location(loc)
+
+    # Non-remote and not in a target city.
+    # Some sources return location="France" even for city-specific jobs —
+    # check title + description for a target city before rejecting.
     if loc in ("france", ""):
         text = f"{job.title or ''} {job.description or ''}".lower()
         return any(city.lower() in text for city in settings.OFFICE_LOCATIONS)

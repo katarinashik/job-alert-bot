@@ -81,9 +81,11 @@ def _scrape(
             job_level = str(row.get("job_level") or "")
 
             # Detect remote from the actual job data — NOT from which search we ran.
-            # "hybrid" is not remote: user only wants fully remote or office in target cities.
+            # "hybrid" is not remote: user only wants fully remote or office in
+            # target cities. Hybrid jobs keep remote=False so the city check applies.
             raw_remote = row.get("is_remote")
-            is_remote = (
+            is_hybrid = "hybrid" in job_type or "hybride" in job_type
+            is_remote = (not is_hybrid) and (
                 (raw_remote is True or str(raw_remote).lower() == "true")
                 or "remote" in job_type
                 or "télétravail" in job_type

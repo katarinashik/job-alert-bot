@@ -5,9 +5,16 @@ on:
     - cron: "0 */2 * * *"   # every 2 hours
   workflow_dispatch:          # manual run button in GitHub UI
 
+# Kill a hung run when the next one starts, instead of letting it agonize
+# for ~hours when LinkedIn rate-limits the scraper.
+concurrency:
+  group: job-alert
+  cancel-in-progress: true
+
 jobs:
   alert:
     runs-on: ubuntu-latest
+    timeout-minutes: 25       # healthy run = a few minutes; 25 = hard stop
 
     steps:
       - uses: actions/checkout@v4

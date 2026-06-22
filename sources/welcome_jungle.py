@@ -161,7 +161,10 @@ def _query(
                 parts = [o.get("city"), o.get("state"), o.get("country")]
                 location = ", ".join(p for p in parts if p)
             else:
-                location = "France"
+                # No office on the listing → country unknown. Do NOT fake "France"
+                # (that let foreign full-remote jobs through). Empty location is
+                # rejected by the EU allowlist in is_valid_location.
+                location = ""
 
             date_str = hit.get("published_at", "")
             try:
@@ -200,6 +203,12 @@ def _query(
             if company_size and not any(c.isdigit() for c in company_size):
                 company_size = None  # drop non-informative labels
 
+            # "remote" field on the hit: fulltime / hybrid / punctual / none.
+            # Only full-time remote counts as remote — hybrid needs office presence,
+            # so it must still pass the target-city check.
+            remote_type = str(hit.get("remote", "")).lower()
+            job_remote = remote_type == "fulltime"
+
             yield Job(
                 id=job_id,
                 title=hit.get("name", ""),
@@ -208,7 +217,7 @@ def _query(
                 url=url,
                 salary=salary,
                 source="Welcome to the Jungle",
-                remote=is_remote or hit.get("has_remote", False),
+                remote=job_remote,
                 date_posted=date_posted,
                 experience_level=exp_label,
                 company_size=company_size,

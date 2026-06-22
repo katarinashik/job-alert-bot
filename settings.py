@@ -168,14 +168,53 @@ BLOCKED_DOMAIN_KEYWORDS = [
     " prevoyance ", "bancaire",
 ]
 
-# location substrings always rejected (even for "remote" jobs)
-# Non-France countries → different legal/tax system
-# Small irrelevant French cities → not worth relocating
+# location substrings always rejected (hard override — wins over the EU allowlist)
+# Luxembourg → EU but different tax/legal jurisdiction, kept out on purpose.
+# Small irrelevant French cities → not worth relocating.
 BLOCKED_LOCATION_KEYWORDS = [
-    # Non-France countries
+    # Non-France countries (redundant with the allowlist, kept as explicit guard)
     "canada", "états-unis", "etats-unis", "united states", " usa", "gibraltar",
+    # EU but excluded on purpose (tax jurisdiction)
+    "luxembourg",
     # Small/irrelevant French cities (these rarely post true remote)
-    "luxembourg", "niort", "bartenheim", "chaumont", "limoges",
+    "niort", "bartenheim", "chaumont", "limoges",
+]
+
+# Allowlist of accepted countries for REMOTE jobs: France + EU/EEA.
+# A remote job passes the location filter only if its location names one of
+# these (or a target office city). UK and Switzerland are intentionally absent.
+# Matched as lowercase substrings against the job's location string.
+EUROPEAN_COUNTRIES = [
+    "france",
+    "allemagne", "germany", "deutschland",
+    "espagne", "spain", "españa",
+    "italie", "italy", "italia",
+    "portugal",
+    "belgique", "belgium", "belgië",
+    "pays-bas", "netherlands", "nederland",
+    "irlande", "ireland",
+    "autriche", "austria", "österreich",
+    "pologne", "poland", "polska",
+    "suède", "suede", "sweden",
+    "danemark", "denmark",
+    "finlande", "finland",
+    "grèce", "grece", "greece",
+    "tchèque", "tcheque", "tchéquie", "czech", "czechia",
+    "roumanie", "romania",
+    "hongrie", "hungary",
+    "bulgarie", "bulgaria",
+    "croatie", "croatia",
+    "slovaquie", "slovakia",
+    "slovénie", "slovenie", "slovenia",
+    "lituanie", "lithuania",
+    "lettonie", "latvia",
+    "estonie", "estonia",
+    "chypre", "cyprus",
+    "malte", "malta",
+    # EEA (non-EU)
+    "norvège", "norvege", "norway", "norge",
+    "islande", "iceland",
+    "liechtenstein",
 ]
 
 # Minimum annual salary in EUR — jobs with salary explicitly below this are skipped.
