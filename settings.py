@@ -138,6 +138,15 @@ PREFERRED_COMPANIES = [
     "biomerieux", "bioxmerieux", "sanofi", "gl events", "infopro", "cegid",
 ]
 
+# Watched companies — ALWAYS alert on ANY posting from them, bypassing every
+# filter (relevance, location, experience, domain, salary). Same company under
+# two names. Matched as whole words against the company name (lowercased), so
+# "roads" won't match "crossroads".
+WATCHED_COMPANIES = [
+    "kreads",
+    "roads",
+]
+
 # keywords in description/title that indicate irrelevant technical domain
 # checked against combined title + description text (lowercased)
 BLOCKED_DOMAIN_KEYWORDS = [

@@ -51,6 +51,16 @@ SENIOR_TITLE_WORDS = [
 ]
 
 
+def is_watched_company(company: str) -> bool:
+    """True if the company is on the watchlist — its postings always alert,
+    bypassing every other filter. Whole-word match so "roads" ignores
+    "crossroads"."""
+    c = (company or "").lower()
+    return any(
+        re.search(rf"\b{re.escape(w)}\b", c) for w in settings.WATCHED_COMPANIES
+    )
+
+
 def is_relevant(title: str, company: str) -> bool:
     t = title.lower()
     c = company.lower()

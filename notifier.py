@@ -119,11 +119,14 @@ def _fit_line(pct: int) -> str:
 
 
 def send(token: str, chat_id: str, job: Job, job_score: int = 0,
-         fit_pct: int = 0) -> None:
+         fit_pct: int = 0, watched: bool = False) -> None:
     company_line = f"🏢 {_esc(job.company)}"
     if job.company_size:
         company_line += f"  👥 {_esc(job.company_size)}"
-    lines = [f"*{_esc(job.title)}*", company_line]
+    lines = []
+    if watched:
+        lines.append("⭐️ *ENTREPRISE SUIVIE*")
+    lines += [f"*{_esc(job.title)}*", company_line]
 
     if job.location:
         lines.append(f"📍 {_esc(job.location)}")

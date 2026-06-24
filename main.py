@@ -15,9 +15,9 @@ import notifier
 from filter import (is_relevant, is_valid_location, is_valid_experience,
                     is_valid_description, is_valid_domain, is_valid_salary,
                     extract_exp_from_description, _years_from_label, score,
-                    fit_score)
+                    fit_score, is_watched_company)
 from telegram_commands import process_commands, load_state, save_state
-from sources import france_travail, jobspy_scraper, welcome_jungle, apec
+from sources import france_travail, jobspy_scraper, welcome_jungle, apec, watched as watched_src
 
 PARIS = ZoneInfo("Europe/Paris")
 
@@ -231,9 +231,12 @@ def run() -> None:
             settings.SEARCH_KEYWORDS, settings.OFFICE_LOCATIONS, settings.MAX_JOB_AGE_HOURS),
         apec.fetch(
             settings.SEARCH_KEYWORDS, settings.OFFICE_LOCATIONS, settings.MAX_JOB_AGE_HOURS),
+        # All postings from watched companies, any role (by company name).
+        watched_src.fetch(settings.WATCHED_COMPANIES, settings.MAX_JOB_AGE_HOURS),
     ]
 
     candidates: list[tuple[int, notifier.Job]] = []
+    watched: list[notifier.Job] = []
     skipped_relevance = 0
     skipped_location = 0
     skipped_experience = 0
@@ -245,6 +248,17 @@ def run() -> None:
 
     for source in sources:
         for job in source:
+            # Watched companies: alert on ANY posting, bypassing every filter.
+            if is_watched_company(job.company):
+                fp = f"{job.title.lower().strip()}|{job.company.lower().strip()}"
+                if fp not in seen_candidate_fps and storage.is_new(
+                    job.id, job.title, job.company
+                ):
+                    seen_candidate_fps.add(fp)
+                    watched.append(job)
+                    print(f"[watched] {job.title} @ {job.company} — {job.source}")
+                continue
+
             if not is_relevant(job.title, job.company):
                 skipped_relevance += 1
                 print(f"[filter:relevance] {job.title} @ {job.company}")
@@ -301,6 +315,17 @@ def run() -> None:
     state = load_state()
     digest_mode = state.get("digest_mode", False)
     sent = 0
+
+    # Watched-company postings always go out immediately, even in digest mode.
+    for job in watched:
+        try:
+            notifier.send(token, chat_id, job, fit_pct=fit_score(job), watched=True)
+            storage.mark_seen(job.id, job.title, job.company)
+            storage.store_sent_job(job.id, job.title, job.company, job.url)
+            sent += 1
+            time.sleep(0.5)
+        except Exception as e:
+            print(f"[notify:watched] failed for {job.id}: {e}")
 
     if digest_mode:
         # Queue jobs for next digest window instead of sending immediately
